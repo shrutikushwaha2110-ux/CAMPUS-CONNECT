@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:hooks": "node .claude/hooks/test-hooks.mjs",
-    "test:e2e": "node tests/e2e/run.mjs"
+    "test:e2e": "node tests/e2e/run.mjs",
+    "proof": "node scripts/proof-shots.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

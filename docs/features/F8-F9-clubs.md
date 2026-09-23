@@ -29,5 +29,6 @@ Lists every (non-deleted) club with its description, category, member count and 
 ## Results
 2026-09-23 · browser 4/4 pass. No pure-logic file yet; the count rule is inline in `Clubs.tsx`.
 
-## Open questions
-- Should the count rule (`memberCount + joined`) move into `lib/` so it can get a Vitest test? CLAUDE.md prefers rules in `lib/`.
+## v2
+- Done: the count rule moved to `lib/memberships.ts` (`memberCount`) with Vitest tests, and the **2-club limit** was added. See `S1-F9a-student-rules.md`.
+- Leaving now asks "Are you sure?".

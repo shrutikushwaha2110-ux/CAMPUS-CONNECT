@@ -1,28 +1,27 @@
-# F10, F13, F15–F17: Dashboard, units & empty states
+# F13–F17: Cancelled events, deleted clubs, units, empty states
 
-**Requirements (SPEC §5):** F10 dashboard lists registrations, clubs, units · F13 friendly empty states · F15 units with faculty · F16 follow/unfollow · F17 deleted clubs disappear
-**Code:** `src/pages/Dashboard.tsx` · `src/pages/Units.tsx` · `src/pages/NotFound.tsx` · `useMemberships` · `useClubs`
-
-## What it does
-The Dashboard has three sections (registered events with a live seat/cancel badge, joined clubs, followed units), each with its own empty state. Units lists all 7 units with faculty head, supervised clubs, and a Follow toggle.
+**Requirements:** F13 friendly empty states · F14 cancelled event on the page **and the student dashboard** · F15 units · F16 follow · F17 deleted club disappears
+**Code:** `state/AppData.tsx` (`cancelEvent`, `deleteClub`, live-club filtering), `lib/clubs.ts`, `pages/Dashboard.tsx`, `components/ui.tsx` (`RegStatusPill`), `pages/Units.tsx`, `pages/NotFound.tsx`
 
 ## What "correct" means
-- Each Dashboard section shows its items, or a one-line empty message when it has none.
-- A registered event shows its current status badge, including "Cancelled".
-- Following survives reload, and the unit then appears on the Dashboard.
-- A club marked deleted in `clubChanges` is filtered out by `useClubs`, so it vanishes from Clubs and the Dashboard.
-- Unknown routes show the 404 page with "Back to events".
+- **F14:** when staff cancel an event, it keeps existing with `status: cancelled`.
+  - Its page shows "This event was cancelled." and a disabled "Cancelled" button.
+  - Every student registered for it sees **"Cancelled by organiser"** on their dashboard.
+- **F17:** when Faculty delete a club:
+  - it disappears from `/clubs`, Home and every student's "My clubs"
+  - its announcements are hidden and its membership slot is freed
+  - its upcoming events show as cancelled
+  - its manager can't log in
+- **F13:** no search results, an empty dashboard, `/events/999` and unknown routes all show a message.
 
 ## Test cases
 | # | Type | Input | Expected | Actual | Pass/Fail |
 |---|---|---|---|---|---|
-| 1 | Browser | empty storage → Dashboard | 3 empty messages | "You haven't registered for any events yet." etc. | ✅ |
-| 2 | Browser | register Open Mic → Dashboard | listed with badge | "11 seats left" | ✅ |
-| 3 | Browser | `/units` | faculty names | Beyonder Studios → Prof. Meera Nair | ✅ |
-| 4 | Browser | Follow Beyonder Studios, reload | Following + on Dashboard | as expected | ✅ |
-| 5 | Browser | Unfollow | Follow + toast | "Unfollowed Beyonder Studios" | ✅ |
-| 6 | Browser | `/xyz` | 404 page | "We couldn't find that page" | ✅ |
-| 7 | Browser | Faculty deletes Dance Club | gone everywhere | **Not run:** needs C4 page | ⬜ |
+| 1 | e2e F14 | Shruti registers Annual Dance Fest → Dance manager cancels it | dashboard "Cancelled by organiser" | exactly that; another student sees disabled "Cancelled" | ✅ |
+| 2 | e2e F17 | Shruti in Dance + Music → admin deletes Music Club | gone everywhere | dialog warned 2 upcoming events; not on /clubs; My clubs = Dance only; Battle of Bands cancelled; music.manager login refused | ✅ |
+| 3 | Vitest | memberships of a deleted club don't count toward the 2-club limit | slot freed | pass | ✅ |
+| 4 | browser (v1 run) | `/events/999`, `/xyz`, empty dashboard | messages | "Event not found", 404 page, empty-state text | ✅ |
+| 5 | browser (v1 run) | follow Beyonder Studios, reload | Following + on dashboard | as expected | ✅ |
 
 ## Results
-2026-09-23 · browser 6/6 run, all pass · 1 not run (blocked on staff pages).
+2026-09-23 · both previously "not run" cases (F14 dashboard, F17) are now **built and passing in the real browser**. Screenshots: `09-student-dashboard-cancelled-event.png`, `12-student-dashboard-after-club-deleted.png`.

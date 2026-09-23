@@ -1,42 +1,61 @@
-# Day 2: Hooks
+# Day 2: Hooks and agent observability
 
-Registered in `.claude/settings.json` (project level, so the whole team gets them). Scripts are in `.claude/hooks/`.
+## The hooks
+Registered in `.claude/settings.json` (project level, so every teammate gets them). Scripts are in `.claude/hooks/`.
 
 | Hook | Event · matcher | What it does | Why |
 |---|---|---|---|
-| `protect-files.mjs` | **PreToolUse** · `Edit\|Write\|MultiEdit` | Blocks (exit 2) any edit to `SPEC.md` or `src/data/*.json` and tells Claude why | SPEC.md is the team's own source of truth; seed data is designed so every rule can be demoed |
-| `run-lib-tests.mjs` | **PostToolUse** · `Edit\|Write\|MultiEdit` | If the edited file is `src/lib/*.ts`, runs Vitest; on failure sends the failing test back to Claude (exit 2) | Rules live in `lib/`; a rule change must never leave tests red unnoticed |
+| `protect-files.mjs` | **PreToolUse** · `Edit\|Write\|MultiEdit` | Blocks (exit 2) edits to `SPEC.md` and `src/data/*.json` unless the path is listed in `approved-edits.txt` | SPEC.md is the team's source of truth; seed data is designed so every rule can be demoed |
+| `run-lib-tests.mjs` | **PostToolUse** · `Edit\|Write\|MultiEdit` | After any `src/lib/*.ts` edit, runs Vitest; on failure feeds the failing tests back to Claude (exit 2) | Rules live in `lib/`; a rule change must never leave tests red unnoticed |
 
-Both hooks append a line to `.claude/hooks/hook-log.txt` every time they fire. That log is the proof.
+Every firing is appended to `.claude/hooks/hook-log.txt`, tagged **`[live]`** when Claude Code fired it (its input has a `session_id`) and **`[test]`** when the test script did.
 
-## Test cases (proof it fires on the right event)
+**Unlocking a protected file** is a team decision: add the path to `.claude/hooks/approved-edits.txt`, make the change, remove the line. The file's history section records who approved what.
 
-Run `npm run test:hooks`. It sends each hook the same JSON Claude Code sends and checks the exit code.
+## Test cases: `npm run test:hooks` (9/9 ✅)
 
-| # | Input event | Expected | Actual (2026-09-23) | Result |
-|---|---|---|---|---|
-| TC1 | Edit `SPEC.md` | blocked, exit 2 | exit 2, "Blocked by protect-files hook" | ✅ |
-| TC2 | Write `src/data/events.json` | blocked, exit 2 | exit 2 | ✅ |
-| TC3 | Edit `src/pages/Home.tsx` | allowed, exit 0 | exit 0 | ✅ |
-| TC4 | Edit `docs/SPEC.md.notes` (look-alike name) | allowed, exit 0 | exit 0 | ✅ |
-| TC5 | Edit `src/lib/seats.ts`, tests green | tests run, exit 0 | exit 0, log "48 passed (48)" | ✅ |
-| TC6 | Edit `src/pages/Home.tsx` | tests **not** run, exit 0 | exit 0, no log line | ✅ |
-| TC7 | Edit `src/lib/seats.ts` with a red test present | exit 2 + failure text | exit 2, "1 failed \| 48 passed (49)" | ✅ |
+| # | Event fed to the hook | Expected | Result |
+|---|---|---|---|
+| TC1 | Edit `SPEC.md` | blocked (exit 2) | ✅ |
+| TC2 | Write `src/data/clubs.json` | blocked | ✅ |
+| TC8 | Edit a data file that is listed in `approved-edits.txt` | allowed | ✅ |
+| TC9 | Same file after it's removed from the list | blocked again | ✅ |
+| TC3 | Edit `src/pages/Home.tsx` | allowed | ✅ |
+| TC4 | Edit `docs/SPEC.md.notes` (look-alike) | allowed | ✅ |
+| TC5 | Edit `src/lib/seats.ts`, tests green | tests run, exit 0 | ✅ |
+| TC6 | Edit a page | tests not run | ✅ |
+| TC7 | Edit `src/lib/seats.ts` with a red test present | exit 2 + failure text | ✅ |
 
-**Bug found by these tests:** the first manual attempt passed a Windows path through `echo`, which silently turned `\\` into `\`. The JSON became invalid and the hook quietly allowed the edit (it "fails open"). The hook now logs `SKIP unreadable hook input` so this can't go unnoticed, and the tests build their JSON with `JSON.stringify`.
+Proof image: `docs/screenshots/deliverables/day2-hook-tests.png`.
 
-## Live demo in Claude Code (for the screenshot)
+## The hooks firing LIVE in Claude Code (2026-09-23)
 
-Hooks load when a session starts, so open a **new** Claude Code session in this folder:
+These happened in the real session that built v2, not in a test:
 
-1. Type: `Add a line "test" at the end of SPEC.md`. Claude's Edit is refused with *"Blocked by protect-files hook … SPEC.md is written by the team."* 📸
-2. Type: `Add a comment at the top of src/lib/seats.ts`. After the edit, the hook runs Vitest. 📸
-3. Show `.claude/hooks/hook-log.txt`: the BLOCK and PASS lines with timestamps. 📸
+| Time (UTC) | What Claude tried | Hook result |
+|---|---|---|
+| 13:57 | Write new `src/data/users.json` and `announcements.json` for the role logins | **BLOCKED** (both) by protect-files. Claude stopped and **asked the team**; Shruti chose the approved-list option |
+| 14:00 | Rewrote `lib/permissions.ts` so Faculty manage everything | **run-lib-tests FAIL** "8 failed \| 40 passed". The hook fed the failures back, and the tests were rewritten for SPEC v2 |
+| 14:00 | Rewrote the tests | run-lib-tests PASS "56 passed" |
+| 14:30 | Write SPEC.md (while it was on the approved list) | ALLOW (team-approved) |
+| 14:31:33 | Edit SPEC.md after re-locking (deliberate live test) | **BLOCKED**, SPEC.md unchanged |
+| 14:32 | Write `src/data/clubs.json` | **BLOCKED** `[live]` |
 
-If Claude Code asks you to review the new hooks the first time, approve them. They are project hooks from `.claude/settings.json`.
+Proof image: `docs/screenshots/deliverables/day2-hook-live-log.png` (the `[live]` lines of `hook-log.txt`).
+**Screenshot of the chat itself:** scroll this Claude Code conversation to the message "PreToolUse:Edit hook error … Blocked by protect-files hook: …/SPEC.md" and take a screenshot 📸 (Win + Shift + S).
 
 ## Subagent observability (agents-observe)
 
-1. Install and start [agents-observe](https://github.com/simple10/agents-observe) following its README (it adds its own hook that streams events to a local dashboard).
-2. In Claude Code: `Use the Explore subagent to find every place a seat count is calculated or displayed in src/`
-3. Watch the subagent's tool calls appear live in the agents-observe dashboard, and take the screenshot 📸 → save as `docs/screenshots/day2-agents-observe.png`.
+**Done here:** a built-in **Explore** subagent was spawned in this session. It found four places re-implementing seat maths, which we then fixed. Its report is in [`docs/subagent-runs/2026-09-23-explore-seat-logic.md`](subagent-runs/2026-09-23-explore-seat-logic.md).
+
+**Needs your machine (5 minutes):** agents-observe is not in this account's plugin catalog and needs Docker + the `claude` CLI in a terminal.
+1. Start **Docker Desktop** (it's installed).
+2. In a terminal in this folder:
+   ```
+   claude plugin marketplace add simple10/agents-observe
+   claude plugin install agents-observe
+   claude
+   ```
+3. Inside that `claude` session type `/observe status`, then open **http://localhost:4981**.
+4. Paste: `Use the Explore subagent to find every place an event's seat count is calculated or displayed in src/. Report only.`
+5. When the Explore agent's tool calls stream into the dashboard, take the screenshot 📸 → save as `docs/screenshots/deliverables/day2-agents-observe.png`.

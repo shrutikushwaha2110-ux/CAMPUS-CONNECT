@@ -1,67 +1,60 @@
 # Test log
 
-Two kinds of tests:
+Every result here was produced by actually running the check. Nothing is filled in from assumption.
 
-1. **Automated:** `npm test` runs Vitest over the rules in `src/lib/`. The latest run was **48 / 48 passed** (4 files: seats, eventFilter, permissions, validation).
-2. **Manual / in-browser:** each row below was actually run against `npm run dev` on the date shown. "Actual" is what really happened.
+## Summary (latest run: 2026-09-23)
 
-> Run on 2026-09-23 by Claude Code in the in-app browser pane (scripted clicks and DOM reads on the real running site, starting from cleared localStorage). **Before the viva, each owner should re-run their rows by hand** and put their initials in the "By" column.
-
-## Automated (Vitest)
-
-| File | Covers | Tests | Result |
+| Suite | Command | What it covers | Result |
 |---|---|---|---|
-| `src/lib/seats.test.ts` | Rule 2, 3, 7 · F6, F11, F14 | 9 | ✅ all pass |
-| `src/lib/eventFilter.test.ts` | Rule 8, 9 · F1, F2, F3 | 13 | ✅ all pass |
-| `src/lib/permissions.test.ts` | Rule 12, 13, 17, 18 · O3, O4, C5 | 13 | ✅ all pass |
-| `src/lib/validation.test.ts` | Rule 14, 15, 19 · O2, O5, C1, C2 | 13 | ✅ all pass |
+| Unit (Vitest) | `npm test` | Every rule in `src/lib/` (9 files) | **108 / 108 ✅** |
+| End-to-end (real Chrome) | `npm run test:e2e` | 34 scenarios across Student, Club Manager, Faculty/Admin, access, 375 px, reduced motion, no WebGL | **34 / 34 ✅**: full table in [`docs/E2E_RESULTS.md`](docs/E2E_RESULTS.md) |
+| Hooks | `npm run test:hooks` | The two Claude Code hooks fire on the right events | **9 / 9 ✅** |
+| Build | `npm run build` | `tsc --noEmit` + Vite production build | **✅ passes** |
 
-## Manual (in the browser)
+Screenshots taken during the e2e run are in `docs/screenshots/site/`. Proof images of command output are in `docs/screenshots/deliverables/`.
 
-| Feature | Input tried | Expected | Actual | Pass/Fail | By |
-|---|---|---|---|---|---|
-| F1 List order | Opened `/events` | Upcoming only, soonest first; no Spring Hackathon (past) | 13 events, starting with Annual Dance Fest (14 Nov), then Literature Circle (18 Nov) … Career Fair (15 Dec) last; past event absent | ✅ Pass | Claude |
-| F2 Search | Typed "Dance", pressed Search | Only dance-related events | Annual Dance Fest, Contemporary Dance Workshop | ✅ Pass | Claude |
-| F2 Search | Typed "zzzz" | Empty state, not a blank page | "No events match your search" + Clear filters button | ✅ Pass | Claude |
-| F3 Host filter | Chose Music Club in host filter | Only Music Club events | Open Mic Evening, Battle of Bands | ✅ Pass | Claude |
-| F3 Category | Clicked "Workshop" chip | Only workshops | Intro to Maker Tools, Contemporary Dance Workshop | ✅ Pass | Claude |
-| F4 Details | Opened Annual Dance Fest | Full details incl. host | Shows date, time, venue, description, "Hosted by Dance Club" | ✅ Pass | Claude |
-| F5 Register | Clicked Register on Annual Dance Fest | Button → "Registered", seat count −1 | Button "Registered"; "40 of 120" → "39 of 120 seats left" | ✅ Pass | Claude |
-| F5 Refresh | Registered, then reloaded page | Still "Registered" | After reload: still "Registered"; localStorage `["annual-dance-fest"]` | ✅ Pass | Claude |
-| F6 Capacity | Opened 24-Hour Hackathon (80/80) | Blocked, "Event Full" | Button "Event Full", disabled | ✅ Pass | Claude |
-| F6 Last seat | Registered on Contemporary Dance Workshop (29/30) | Succeeds, then card shows "Full" | Registered; Events card badge changed to "Full" | ✅ Pass | Claude |
-| F7 Cancel | Clicked Cancel registration → Yes, cancel | Asks "Are you sure?", then Register back, seat +1 | Confirmation shown; button back to "Register"; "40 of 120 seats left" | ✅ Pass | Claude |
-| F8 Club filter | Clicked "Technology" on `/clubs` | Only tech clubs | Hackathon Club only | ✅ Pass | Claude |
-| F9 Join club | Clicked Join on Dance Club | "Joined", 128 → 129 | "Joined", 129 members | ✅ Pass | Claude |
-| F9 Refresh | Joined, reloaded, opened Dashboard | Club listed on dashboard | Dance Club listed under "My clubs" | ✅ Pass | Claude |
-| F9 Leave club | Clicked Joined on Dance Club | "Join", back to 128 | "Join", 128 members | ✅ Pass | Claude |
-| F10 Dashboard | Registered for Open Mic Evening, opened Dashboard | Event listed with seat status | Listed with "11 seats left" | ✅ Pass | Claude |
-| F11 Badges | Viewed Events cards | "N seats left" / "Almost full" / "Full" | Battle of Bands "200 seats left", Open Mic "12 seats left", Dance Workshop "Almost full" (1 left), Hackathon "Full" | ✅ Pass | Claude |
-| F12 Toasts | Register / cancel / join / leave / unfollow | Short confirmation each time | "You're registered for Annual Dance Fest", "Registration cancelled", "You joined Dance Club", "You left Dance Club", "Unfollowed Beyonder Studios" | ✅ Pass | Claude |
-| F13 Not found | Opened `/events/999` | Friendly message | "Event not found" + Back to events | ✅ Pass | Claude |
-| F13 Unknown route | Opened `/xyz` | Friendly 404 | "We couldn't find that page" + Back to events | ✅ Pass | Claude |
-| F13 Empty dashboard | Opened Dashboard with nothing registered | Empty-state message | "You haven't registered for any events yet." | ✅ Pass | Claude |
-| F14 Cancelled | Opened E-Sports Night (seed status cancelled) | "Cancelled" shown, register blocked | Banner "This event was cancelled.", button "Cancelled" disabled | ✅ Pass | Claude |
-| F14 Dashboard | Staff cancels an event the student registered for | Dashboard shows "Cancelled" | **Not run:** needs the Manage Events page (O6), not built yet | ⬜ Not run | |
-| Rule 4 Past | Opened Spring Hackathon (past) | Register blocked | First run: button said "Event Full" (full takes priority). **Fixed** label order → now "Event Passed", disabled | ✅ Pass (after fix) | Claude |
-| F15 Units | Opened `/units` | Faculty name on each unit | e.g. Beyonder Studios → "Prof. Meera Nair" | ✅ Pass | Claude |
-| F16 Follow | Clicked Follow on Beyonder Studios, reloaded | "Following", dashboard lists unit | "Following"; Dashboard "Following" lists Beyonder Studios | ✅ Pass | Claude |
-| F16 Unfollow | Clicked Following | Back to "Follow" | "Follow" | ✅ Pass | Claude |
-| F17 Deleted club | Faculty deletes a club | Gone from Clubs + dashboard | **Not run:** needs Manage Clubs page (C4). Filtering logic exists in `useClubs` | ⬜ Not run | |
-| A1 Role | Chose Club Manager → Dance Club, then reloaded | Still Dance Club manager, visible | Session `{"role":"clubManager","clubId":"dance-club"}` kept after reload; navbar shows "Dance Club" | ✅ Pass | Claude |
-| A1 Switch | Clicked "Switch role" | Back to `/login`, session cleared | `#/login`, session `null` | ✅ Pass | Claude |
-| O1–O8, C1–C5 | UI | | **Not run:** staff pages not built yet. Rules unit-tested in Vitest (see above) | ⬜ Not run | |
-| N1 Phone | Every route at 375×812 | No sideways scroll | `scrollWidth` = 375 on all 9 routes (/, events, details, clubs, units, dashboard, 999, unknown, login) | ✅ Pass | Claude |
-| N2 Footer | Every route | Unofficial-project notice | Present on all 9 routes (login has its own notice) | ✅ Pass | Claude |
-| N3 3D UX | Home on desktop and 375 px | Scene enhances; search/cards usable | Floating shapes behind hero; search, chips, featured card all usable; lighter scene on phone | ✅ Pass | Claude |
-| N4 No WebGL | Forced `getContext('webgl')` → null, opened Home | Page still works | 0 canvases, hero text + search + featured event render, no uncaught errors | ✅ Pass | Claude |
-| N4 Reduced motion | OS "reduce motion" on | Shapes stop moving | Code path present (`prefers-reduced-motion` check in HeroScene). **Still to check by hand** with the OS setting | ⬜ To verify | |
+## Unit tests by file
 
-## Bugs found while testing
+| File | Covers | Tests |
+|---|---|---|
+| `seats.test.ts` | rules 2, 3, 7, 15 · F6, F11, O5, O7, O8 | 12 |
+| `registrations.test.ts` | rules 1, 3, 4, 6, 21–24 · F5a, M3 | 15 |
+| `memberships.test.ts` | rules 10, 10a, 11, 20 · F9, F9a, F17 | 9 |
+| `permissions.test.ts` | rules 12, 13, 17, 18, 25 · M1, O3, O4, C5 | 21 |
+| `validation.test.ts` | rules 14, 15, 19, 25, 26 · O2, O5, C1, C2, U1, M5 | 20 |
+| `auth.test.ts` | A1, U2, session re-validation | 10 |
+| `clubs.test.ts` | rule 20 · C4 | 4 |
+| `eventFilter.test.ts` | rules 8, 9 · F1–F3 | 13 |
+| `merge.test.ts` | SPEC §6 merge rule | 4 |
 
-| Date | Found in | Bug | Fix |
+## The two items that were "not run" in v1: now done
+
+| Feature | Input tried | Expected | Actual | Pass/Fail |
+|---|---|---|---|---|
+| F14 Cancelled event on dashboard | Shruti registers Annual Dance Fest; Dance manager cancels it (confirm dialog) | Student dashboard shows "Cancelled by organiser"; nobody can register | Dashboard row "Annual Dance Fest … Cancelled by organiser"; Ananya sees disabled "Cancelled" | ✅ Pass |
+| F17 Deleted club disappears | Shruti is in Dance + Music; admin deletes Music Club | Gone from Clubs + dashboard; its events cancelled | Dialog warned "2 upcoming event(s)"; Music not on /clubs; My clubs = Dance only; Battle of Bands shows cancelled; music.manager login refused | ✅ Pass |
+| N4 Reduced motion | Chrome emulates `prefers-reduced-motion: reduce` | Static 3D frame, no loop | `data-motion=reduced`, frames=1, still 1 after 1 s; switched back → frames 24 | ✅ Pass |
+
+## Manual checks (in-app browser, by Claude, 2026-09-23)
+
+| Feature | Input tried | Expected | Actual | Pass/Fail |
+|---|---|---|---|---|
+| A1 Club manager login | `/login/club-manager`, dance.manager@atria.edu / demo123 | Lands on Dance Club dashboard | `#/manage`, title "Dance Club", stats Members 128 / Upcoming 2 | ✅ |
+| M1 Other club URL | as Dance manager open `/manage/events/open-mic-evening/registrations` | Blocked | "Not available for your role … These registrations belong to another club." | ✅ |
+| R17 Faculty page | as Dance manager open `/faculty` | Blocked | "Not available … only for Faculty / Admin" | ✅ |
+| v1 rows | Search, filters, register/cancel, full/last seat, 404, units, 375 px (35 checks) | as SPEC | All passed on 2026-09-23 (v1 log, still valid: same pages) | ✅ |
+
+> **Team:** before the viva, each owner should re-run a few rows by hand (log in with the demo accounts in SPEC §2) and add your initials here.
+
+## Bugs found by testing
+
+| Date | Found by | Bug | Fix |
 |---|---|---|---|
-| 2026-09-23 | Figma export review | Events list not sorted (JSON order) | `upcomingSorted()` in `lib/eventFilter.ts`, used by `useEvents` |
-| 2026-09-23 | Figma export review | Date and host filters were dropdowns with no effect | Wired to `filterEvents()`; values stored in the URL |
-| 2026-09-23 | Figma export review | Search matched host **id** (`dance-club`), not host name | `matchesQuery()` compares against the resolved host name |
-| 2026-09-23 | Rule 4 manual test | Past event that was also full said "Event Full" | Check `isPastEvent` before `isFull` for the label |
+| 2026-09-23 | Figma export review | List unsorted; date/host filters did nothing; search matched host id | `lib/eventFilter.ts` |
+| 2026-09-23 | Manual test (rule 4) | Past + full event said "Event Full" | Label order Cancelled → Passed → Full |
+| 2026-09-23 | Hook test cases | Invalid hook input silently allowed an edit | Hook now logs `SKIP unreadable hook input` |
+| 2026-09-23 | `run-lib-tests` hook (live) | Changing permissions to "Faculty manages all" left 8 old tests red | Tests rewritten for SPEC v2 |
+| 2026-09-23 | Hook test cases | A bad edit to the hooks (undefined `src`) made both crash, so nothing was blocked | Caught at 1/9, fixed, back to 9/9 |
+| 2026-09-23 | Explore subagent | Seat maths re-implemented in 4 places (hard-coded `5` in FacultyHome) | `seatsFilled`, `seatsTakenNow`, `unnamedEarlierSeats` in lib |
+| 2026-09-23 | e2e suite | Test-harness only: Puppeteer mouse clicks lost after reload; toast text matched "Music Club" | DOM clicks; check club cards not body text |
+| 2026-09-23 | Hero review | Reduced motion kept the animation loop running (only skipped movement) and never reacted to setting changes | One static frame, loop stopped, live `change` listener |

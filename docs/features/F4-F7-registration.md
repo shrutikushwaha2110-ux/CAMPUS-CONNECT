@@ -13,7 +13,7 @@ The event page shows poster, category, "Hosted by" (a link to Clubs or Units), d
 - today from `getToday()`
 
 ## What "correct" means
-- seatsLeft = `seatsTotal − seatsTaken − (registered ? 1 : 0)`, never below 0.
+- seatsLeft = `seatsTotal − seatsTaken − registrations made on the site that hold a seat` (confirmed + pending, from **all** students), never below 0. (v2: v1 only counted a single demo student.)
 - Badge: `> 5` → "N seats left" · `1–5` → "Almost full" · `0` → "Full" · cancelled → "Cancelled".
 - The Register button is disabled with a reason label, checked in this order: **Cancelled → Event Passed → Event Full**.
 - Registration survives a reload (localStorage).
@@ -23,12 +23,12 @@ The event page shows poster, category, "Hosted by" (a link to Clubs or Units), d
 ## Test cases
 | # | Type | Input | Expected | Actual | Pass/Fail |
 |---|---|---|---|---|---|
-| 1 | Vitest | seatsLeft(120, 80, false) | 40 | 40 | ✅ |
-| 2 | Vitest | seatsLeft(120, 80, true) | 39 | 39 | ✅ |
-| 3 | Vitest | seatsLeft(80, 80, true) | 0 (not −1) | 0 | ✅ |
+| 1 | Vitest | seatsLeft(120, 80, 0) | 40 | 40 | ✅ |
+| 2 | Vitest | seatsLeft(120, 80, 3) | 37 | 37 | ✅ |
+| 3 | Vitest | seatsLeft(80, 80, 1) | 0 (not −1) | 0 | ✅ |
 | 4 | Vitest | status 30/25 | almost-full (exactly 5) | almost-full | ✅ |
 | 5 | Vitest | status 30/29 | almost-full (1 left) | almost-full | ✅ |
-| 6 | Vitest | status 30/29 + registered | full | full | ✅ |
+| 6 | Vitest | status 30/29 + 1 site registration | full | full | ✅ |
 | 7 | Vitest | status 80/80 | full | full | ✅ |
 | 8 | Vitest | status cancelled 60/20 | cancelled | cancelled | ✅ |
 | 9 | Browser | open Annual Dance Fest | "Hosted by Dance Club" | shown | ✅ |
@@ -44,5 +44,8 @@ The event page shows poster, category, "Hosted by" (a link to Clubs or Units), d
 ## Results
 2026-09-23 · Vitest 9/9 · browser 9/9 after one fix (label priority for past events).
 
-## Open questions
-- F14 on the dashboard (a staff-cancelled registration showing "Cancelled") can only be tested once Manage Events (O6) exists.
+## v2 additions
+- Registering needs a **student login** (`/login/student?next=…`); staff see "Only students can register".
+- `requiresApproval` events show "Request to register" → "Pending approval" (see `M-club-manager.md`).
+- F14 on the dashboard is now built and passing (see `F10-F17-dashboard-units.md`).
+- 15 more rules tested in `registrations.test.ts`.

@@ -17,11 +17,12 @@ The team's Day 3 workflow: no feature counts as done without a spec, test cases,
 - Add the manual (in-browser) cases to the feature doc's **Test cases** table: input, expected, and blank Actual/Result.
 
 ## 3. RUN
-- Delegate to the **`test-runner`** subagent to run `npm test` and `npm run build`.
-- For manual cases, run the dev server and try each one in the browser (or delegate page-wide checks to **`ui-checker`**).
+- If the feature has a browser flow (any role), add a `test('<ID>', …)` scenario to `tests/e2e/run.mjs` using its helpers (`asStudent`, `asManager('dance')`, `asFaculty`, `go`, `click`, `type`, `confirmDialog`, `shot`).
+- Delegate to the **`test-runner`** subagent to run `npm test`, `npm run test:e2e` and `npm run build`.
+- For page-wide checks (375 px, access, a11y) delegate to **`ui-checker`**.
 
 ## 4. RECORD
-- Fill **Actual** and **Pass/Fail** with what really happened, then copy the rows into `TESTS.md`.
+- Fill **Actual** and **Pass/Fail** with what really happened (the e2e runner writes `docs/E2E_RESULTS.md` for you), then summarise in `TESTS.md`.
 - If anything failed: record it, fix it in `src/lib/` (or the page), and re-run. Add the bug to TESTS.md → "Bugs found".
 - Log any MCP tool used in `MCP_LOG.md`.
 
