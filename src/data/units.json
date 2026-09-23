@@ -1,0 +1,44 @@
+[
+  {
+    "id": "digital-transformation",
+    "name": "Digital Transformation",
+    "description": "Leads projects in software, automation, and digital tools.",
+    "facultyName": "Dr. Ananya Rao"
+  },
+  {
+    "id": "emobility",
+    "name": "eMobility",
+    "description": "Research and projects on electric and connected vehicles.",
+    "facultyName": "Dr. Imran Sheikh"
+  },
+  {
+    "id": "energy",
+    "name": "Energy",
+    "description": "Works on renewable energy and sustainability projects.",
+    "facultyName": "Dr. Priya Menon"
+  },
+  {
+    "id": "life-sciences",
+    "name": "Life Sciences",
+    "description": "Biology, health tech, and life sciences research.",
+    "facultyName": "Dr. Karthik Iyer"
+  },
+  {
+    "id": "entrepreneurship",
+    "name": "Entrepreneurship",
+    "description": "Supports student startups and business ideas.",
+    "facultyName": "Dr. Farah Khan"
+  },
+  {
+    "id": "beyonder-studios",
+    "name": "Beyonder Studios",
+    "description": "A creative studio for design, film, and performance.",
+    "facultyName": "Prof. Meera Nair"
+  },
+  {
+    "id": "ai-decentralized-tech",
+    "name": "AI & Decentralized Technologies",
+    "description": "Research centre for AI, blockchain, and Web3.",
+    "facultyName": "Dr. Vikram Shah"
+  }
+]

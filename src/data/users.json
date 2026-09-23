@@ -1,0 +1,16 @@
+[
+  { "id": "stu-shruti", "name": "Shruti Kushwaha", "email": "shruti@student.atria.edu", "password": "demo123", "role": "student", "active": true },
+  { "id": "stu-raju", "name": "Raju Reddy", "email": "raju@student.atria.edu", "password": "demo123", "role": "student", "active": true },
+  { "id": "stu-sohail", "name": "Sohail Khan", "email": "sohail@student.atria.edu", "password": "demo123", "role": "student", "active": true },
+  { "id": "stu-ananya", "name": "Ananya Iyer", "email": "ananya@student.atria.edu", "password": "demo123", "role": "student", "active": true },
+
+  { "id": "mgr-dance", "name": "Priya Sharma", "email": "dance.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "dance-club", "active": true },
+  { "id": "mgr-music", "name": "Arjun Mehta", "email": "music.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "music-club", "active": true },
+  { "id": "mgr-literature", "name": "Deepa Nair", "email": "literature.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "literature-club", "active": true },
+  { "id": "mgr-sports", "name": "Rahul Verma", "email": "sports.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "sports-club", "active": true },
+  { "id": "mgr-esports", "name": "Kiran Patel", "email": "esports.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "esports-club", "active": true },
+  { "id": "mgr-hackathon", "name": "Shreya Iyer", "email": "hackathon.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "hackathon-club", "active": true },
+
+  { "id": "fac-admin", "name": "Dr. Farah Khan", "email": "admin@atria.edu", "password": "admin123", "role": "faculty", "active": true },
+  { "id": "fac-vikram", "name": "Dr. Vikram Shah", "email": "vikram.shah@atria.edu", "password": "admin123", "role": "faculty", "active": true }
+]

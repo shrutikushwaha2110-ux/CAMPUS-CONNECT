@@ -1,0 +1,29 @@
+[
+  {
+    "id": "ann-welcome",
+    "clubId": null,
+    "title": "Welcome to CampusConnect",
+    "body": "All university events are now listed here. Register for any event, from any club, straight from its page.",
+    "authorId": "fac-admin",
+    "createdAt": "2026-09-01T09:00:00.000Z",
+    "updatedAt": "2026-09-01T09:00:00.000Z"
+  },
+  {
+    "id": "ann-dance-auditions",
+    "clubId": "dance-club",
+    "title": "Annual Dance Fest auditions",
+    "body": "Auditions for group performances run every Friday at 5 pm in Studio A until 30 October.",
+    "authorId": "mgr-dance",
+    "createdAt": "2026-09-10T12:00:00.000Z",
+    "updatedAt": "2026-09-10T12:00:00.000Z"
+  },
+  {
+    "id": "ann-music-jam",
+    "clubId": "music-club",
+    "title": "Weekly jam night",
+    "body": "Bring your instrument: jam night every Wednesday, 7 pm, Amphitheatre.",
+    "authorId": "mgr-music",
+    "createdAt": "2026-09-12T12:00:00.000Z",
+    "updatedAt": "2026-09-12T12:00:00.000Z"
+  }
+]

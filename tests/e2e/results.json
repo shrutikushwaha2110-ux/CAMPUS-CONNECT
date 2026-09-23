@@ -1,0 +1,314 @@
+{
+  "date": "2026-09-23 14:28",
+  "browser": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "passed": 34,
+  "total": 34,
+  "results": [
+    {
+      "id": "A1",
+      "name": "Separate login page per role",
+      "input": "Open /login",
+      "expected": "Three role login cards: Student, Club Manager, Faculty/Admin",
+      "actual": "Cards: student, clubManager, faculty",
+      "pass": true,
+      "ms": 1217
+    },
+    {
+      "id": "A1",
+      "name": "Wrong password is rejected",
+      "input": "student login, password \"wrong\"",
+      "expected": "Error, stays on login page",
+      "actual": "\"Email or password is incorrect.\"",
+      "pass": true,
+      "ms": 2760
+    },
+    {
+      "id": "A1",
+      "name": "Student account cannot use the Faculty login",
+      "input": "shruti@student… on /login/faculty",
+      "expected": "Error: use the login page for your role",
+      "actual": "\"This account is not a Faculty/Admin account. Use the login page for your role.\"",
+      "pass": true,
+      "ms": 2383
+    },
+    {
+      "id": "A1",
+      "name": "Each role lands on its own dashboard",
+      "input": "Log in as student, Dance manager, admin",
+      "expected": "/dashboard, /manage, /faculty",
+      "actual": "#/dashboard, #/manage, #/faculty",
+      "pass": true,
+      "ms": 7836
+    },
+    {
+      "id": "A1",
+      "name": "Session survives refresh and role is visible",
+      "input": "Dance manager, reload",
+      "expected": "Navbar pill shows \"Priya Sharma · Club Manager · Dance Club\"",
+      "actual": "C\nPriya Sharma · Club Manager · Dance Club",
+      "pass": true,
+      "ms": 4283
+    },
+    {
+      "id": "R17",
+      "name": "Logged-out visitor is sent to login for a dashboard",
+      "input": "Log out, open /dashboard",
+      "expected": "Redirect to /login/student?next=…",
+      "actual": "#/login/student?next=%2Fdashboard",
+      "pass": true,
+      "ms": 1591
+    },
+    {
+      "id": "S1",
+      "name": "Student sees all events and all clubs",
+      "input": "Student opens /events and /clubs",
+      "expected": "13 upcoming events, 6 clubs, both rule messages shown",
+      "actual": "13 events, 6 clubs; rules: \"You can join a maximum of 2 clubs.\" + \"You can attend/register for events from any club.\"",
+      "pass": true,
+      "ms": 3852
+    },
+    {
+      "id": "F5a",
+      "name": "Register for another club’s event without being a member",
+      "input": "Shruti (no clubs) registers for Open Mic Evening (Music Club)",
+      "expected": "Registered; dashboard shows Confirmed",
+      "actual": "Card: \"Your registration: Confirmed / Registered\"; dashboard lists Open Mic Evening · Confirmed",
+      "pass": true,
+      "ms": 1350
+    },
+    {
+      "id": "F9a",
+      "name": "Join max 2 clubs",
+      "input": "Join Dance Club, Music Club, then try Sports Club",
+      "expected": "Third join blocked: \"Limit reached\", counter 2/2",
+      "actual": "Sports Club button \"Limit reached\" (disabled); banner \"You've joined 2 of 2\"; 2 memberships stored",
+      "pass": true,
+      "ms": 1834
+    },
+    {
+      "id": "F9a",
+      "name": "Still able to register for a non-member club’s event at the limit",
+      "input": "With 2 clubs, register for Football Cup (Sports Club)",
+      "expected": "Registration succeeds",
+      "actual": "Confirmed",
+      "pass": true,
+      "ms": 872
+    },
+    {
+      "id": "F9",
+      "name": "Leave a club frees a slot",
+      "input": "Leave Music Club (confirm), then Sports Club button",
+      "expected": "Sports \"Join\" enabled again",
+      "actual": "Sports button: \"Join\"",
+      "pass": true,
+      "ms": 1401
+    },
+    {
+      "id": "F10",
+      "name": "Student dashboard shows everything",
+      "input": "Open /dashboard",
+      "expected": "Registrations, clubs 2/2, announcements, suggestions",
+      "actual": "Sections: registrations, upcoming for you, My clubs (2/2), announcements (university + Dance + Music), following",
+      "pass": true,
+      "ms": 1253
+    },
+    {
+      "id": "M3",
+      "name": "Registration needing approval starts Pending",
+      "input": "Shruti requests Battle of Bands (requiresApproval)",
+      "expected": "Status \"Pending approval\"",
+      "actual": "Pending approval",
+      "pass": true,
+      "ms": 866
+    },
+    {
+      "id": "M3",
+      "name": "Club Manager accepts a registration",
+      "input": "Music manager → Battle of Bands registrations → Accept",
+      "expected": "Student then sees Confirmed",
+      "actual": "Manager saw \"Shruti Kushwaha · Pending approval\", clicked Accept → Confirmed; student dashboard shows Battle of Bands · Confirmed",
+      "pass": true,
+      "ms": 7371
+    },
+    {
+      "id": "M3",
+      "name": "Club Manager rejects a registration and the seat is freed",
+      "input": "Raju registers Open Mic; Music manager rejects",
+      "expected": "Raju sees Rejected; seats filled goes back down",
+      "actual": "Seats filled 50/60 → 49/60; Raju sees \"Rejected\"",
+      "pass": true,
+      "ms": 10237
+    },
+    {
+      "id": "M1",
+      "name": "Club Manager sees only their own club",
+      "input": "Dance manager opens /manage",
+      "expected": "Only Dance Club events, members, announcements",
+      "actual": "club=dance-club; events=annual-dance-fest, dance-workshop; members list includes Shruti Kushwaha",
+      "pass": true,
+      "ms": 3719
+    },
+    {
+      "id": "M1",
+      "name": "Club Manager blocked from another club’s management data",
+      "input": "Dance manager types Music URLs + /faculty",
+      "expected": "All three show \"Not available\"",
+      "actual": "Music registrations, Music edit URL and /faculty/clubs all blocked",
+      "pass": true,
+      "ms": 2419
+    },
+    {
+      "id": "O2",
+      "name": "Invalid event form creates nothing",
+      "input": "Dance manager: seats 0 + past date",
+      "expected": "Errors shown, event not created",
+      "actual": "date: Date cannot be in the past; seats: Seats must be at least 1",
+      "pass": true,
+      "ms": 1582
+    },
+    {
+      "id": "O1",
+      "name": "Club Manager creates an event",
+      "input": "Dance manager: \"Salsa Social Night\", valid data",
+      "expected": "Appears on /events hosted by Dance Club",
+      "actual": "Host field: \"Dance Club (locked)\"; event listed on /events \"by Dance Club\"",
+      "pass": true,
+      "ms": 1638
+    },
+    {
+      "id": "M5",
+      "name": "Club Manager posts an announcement; members see it",
+      "input": "Dance manager posts \"Costume fitting\"",
+      "expected": "Shruti (Dance member) sees it on her dashboard",
+      "actual": "Audience \"Dance Club members (locked)\"; student dashboard shows \"Costume fitting\"",
+      "pass": true,
+      "ms": 4229
+    },
+    {
+      "id": "F14",
+      "name": "Cancelled event shows on the student dashboard",
+      "input": "Shruti registers Annual Dance Fest; Dance manager cancels it (confirm)",
+      "expected": "Dashboard: \"Cancelled by organiser\"; event page blocks registering",
+      "actual": "Dashboard row: \"Annual Dance Fest … Cancelled by organiser\"; other student sees \"Cancelled\" (disabled)",
+      "pass": true,
+      "ms": 12206
+    },
+    {
+      "id": "FA1",
+      "name": "Faculty/Admin dashboard",
+      "input": "Admin opens /faculty",
+      "expected": "Stats + links to Clubs, Events, Users, Announcements",
+      "actual": "Stats tiles + 4 management areas shown",
+      "pass": true,
+      "ms": 3129
+    },
+    {
+      "id": "O3",
+      "name": "Faculty/Admin can edit any club’s event",
+      "input": "Admin opens Music Club event edit, changes venue",
+      "expected": "Saved; student event page shows new venue",
+      "actual": "Venue now \"Open Air Theatre\"",
+      "pass": true,
+      "ms": 1495
+    },
+    {
+      "id": "C2",
+      "name": "Duplicate club name is rejected",
+      "input": "Admin adds club named \"dance club\"",
+      "expected": "Error, nothing created",
+      "actual": "\"A club with this name already exists\"",
+      "pass": true,
+      "ms": 970
+    },
+    {
+      "id": "C1",
+      "name": "Faculty/Admin adds a club",
+      "input": "Add \"Photography Club\"",
+      "expected": "Listed on /clubs",
+      "actual": "Photography Club shown on /clubs",
+      "pass": true,
+      "ms": 1491
+    },
+    {
+      "id": "C3",
+      "name": "Faculty/Admin edits club info",
+      "input": "Change Dance Club description",
+      "expected": "New description on /clubs",
+      "actual": "Updated description visible",
+      "pass": true,
+      "ms": 1427
+    },
+    {
+      "id": "U1",
+      "name": "Faculty/Admin creates a user and assigns a club manager",
+      "input": "Create manager \"Asha K\" for Photography Club",
+      "expected": "Asha can log in and sees only Photography Club",
+      "actual": "Asha logged in → /manage shows \"Photography Club\"",
+      "pass": true,
+      "ms": 5202
+    },
+    {
+      "id": "U2",
+      "name": "Deactivated user cannot log in",
+      "input": "Admin deactivates Raju; Raju tries to log in",
+      "expected": "Error: account deactivated",
+      "actual": "\"This account has been deactivated. Contact the Faculty/Admin office.\"",
+      "pass": true,
+      "ms": 6069
+    },
+    {
+      "id": "F17",
+      "name": "Deleted club disappears everywhere",
+      "input": "Admin deletes Music Club (Shruti is a member)",
+      "expected": "Gone from /clubs and Shruti’s dashboard; its events cancelled; its manager can’t log in",
+      "actual": "Dialog warned \"2 upcoming event(s)\"; not on /clubs; dashboard My clubs = Dance only; Battle of Bands shows cancelled; manager login refused",
+      "pass": true,
+      "ms": 11005
+    },
+    {
+      "id": "N4",
+      "name": "Reduced motion stops the 3D animation",
+      "input": "Emulate prefers-reduced-motion: reduce, open Home, wait 1.5 s",
+      "expected": "data-motion=reduced and exactly 1 frame drawn",
+      "actual": "reduce → motion=reduced, frames=1 (still 1 after 1 s); switched back → motion=full, frames=44",
+      "pass": true,
+      "ms": 5799
+    },
+    {
+      "id": "N4",
+      "name": "Site works without WebGL",
+      "input": "Block WebGL, open Home",
+      "expected": "No canvas, hero/search/featured still render, no errors",
+      "actual": "0 canvases; hero, search and featured event rendered; 0 page errors",
+      "pass": true,
+      "ms": 3259
+    },
+    {
+      "id": "N1",
+      "name": "Phone width (375 px), every role",
+      "input": "375×812 on public, student, manager, faculty pages",
+      "expected": "No sideways scroll anywhere",
+      "actual": "17 routes checked at 375 px, all scrollWidth ≤ 375",
+      "pass": true,
+      "ms": 21521
+    },
+    {
+      "id": "N2",
+      "name": "Footer notice on every page",
+      "input": "Visit main routes",
+      "expected": "\"Unofficial student project\" everywhere",
+      "actual": "Present on all 7",
+      "pass": true,
+      "ms": 3437
+    },
+    {
+      "id": "—",
+      "name": "No uncaught page errors during the whole run",
+      "input": "All scenarios above",
+      "expected": "0 errors",
+      "actual": "0 uncaught errors",
+      "pass": true,
+      "ms": 0
+    }
+  ]
+}

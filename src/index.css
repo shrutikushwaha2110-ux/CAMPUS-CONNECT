@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+
+  --color-primary: #4637D2;
+  --color-primary-dark: #372AAE;
+  --color-primary-tint: #EEECFB;
+  --color-primary-ink: #2B2093;
+  --color-night: #1C1750;
+  --color-night-2: #2B2093;
+  --color-accent-green: #00D746;
+  --color-text: #1F1D2B;
+  --color-text-muted: #454242;
+  --color-border: #E2E8F0;
+  --color-page-bg: #F7F7FC;
+  --color-card: #FFFFFF;
+  --color-footer-text: #CBD5E1;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #E2E8F0 transparent;
+}
+
+/* N4: with "reduce motion" on, turn off hover lifts, slides and other CSS movement */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .hover\:-translate-y-0\.5:hover { transform: none !important; }
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #F7F7FC;
+  color: #1F1D2B;
+}

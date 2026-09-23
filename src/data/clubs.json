@@ -1,0 +1,56 @@
+[
+  {
+    "id": "dance-club",
+    "name": "Dance Club",
+    "category": "Arts & Culture",
+    "description": "Performance and choreography for every style of dance.",
+    "memberCount": 128,
+    "unitId": "entrepreneurship",
+    "managerName": "Priya Sharma"
+  },
+  {
+    "id": "music-club",
+    "name": "Music Club",
+    "category": "Arts & Culture",
+    "description": "Jam sessions, gigs, and music production nights.",
+    "memberCount": 96,
+    "unitId": "entrepreneurship",
+    "managerName": "Arjun Mehta"
+  },
+  {
+    "id": "literature-club",
+    "name": "Literature Club",
+    "category": "Arts & Culture",
+    "description": "Reading circles, creative writing, and open mic nights.",
+    "memberCount": 64,
+    "unitId": "entrepreneurship",
+    "managerName": "Deepa Nair"
+  },
+  {
+    "id": "sports-club",
+    "name": "Sports Club",
+    "category": "Sports & Gaming",
+    "description": "Inter-faculty tournaments across every major sport.",
+    "memberCount": 215,
+    "unitId": "life-sciences",
+    "managerName": "Rahul Verma"
+  },
+  {
+    "id": "esports-club",
+    "name": "E-Sports Club",
+    "category": "Sports & Gaming",
+    "description": "Competitive gaming, LAN nights, and tournaments.",
+    "memberCount": 87,
+    "unitId": "digital-transformation",
+    "managerName": "Kiran Patel"
+  },
+  {
+    "id": "hackathon-club",
+    "name": "Hackathon Club",
+    "category": "Technology",
+    "description": "Builds and ships projects at campus hackathons.",
+    "memberCount": 142,
+    "unitId": "ai-decentralized-tech",
+    "managerName": "Shreya Iyer"
+  }
+]

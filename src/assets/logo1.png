@@ -1,0 +1,51 @@
+You are a senior product designer. Design the complete website "CampusConnect", an unofficial student-made events and clubs platform for Atria University students. It has four pages, each as a Desktop frame (1440 px wide) and a Mobile frame (375 px wide). Put everything on one Figma page called "Day 1". Name frames exactly: "Home / Desktop", "Home / Mobile", "Events / Desktop", "Events / Mobile", "Events / Empty", "EventDetails / Desktop", "EventDetails / Mobile", "EventDetails / Registered", "EventDetails / Full", "EventDetails / Cancelled", "NotFound / Desktop", "NotFound / Mobile".
+
+LOOK AND FEEL
+Modern, professional and confident, like a polished university product, not a template. Generous white space, big rounded cards, large event posters, clear hierarchy. Font: Inter throughout. Content column is 1200 px wide, centred, 12 columns, 24 px gutters. Section spacing is 96 px on desktop and 56 px on mobile. Every card, row, list and section uses Auto Layout with spacing in multiples of 4. No lorem ipsum, and nothing placed by hand.
+
+COLOURS (use these exact hex values; create them as Figma variables)
+primary #4637D2 (buttons, links, active chips) | primary-dark #372AAE (hover) | primary-tint #EEECFB (soft backgrounds, category badges) | primary-ink #2B2093 (text on tint) | night #1C1750 (hero and footer) | accent green #00D746 (small fills only, always with dark text #1F1D2B, or on night; never green text on white) | text #1F1D2B | text-muted #454242 | border #E2E8F0 | page background #F7F7FC | card white #FFFFFF | footer text #CBD5E1.
+Seats badges: "N seats left" green #DCFCE7 with text #166534; "Almost full" amber #FEF3C7 with text #78350F; "Full" red #FEE2E2 with text #991B1B; "Cancelled" grey #E2E8F0 with text #334155. Disabled buttons: background #E2E8F0, text #454242.
+
+TYPE (readable at a glance; nothing smaller than 12 px, and body text never smaller than 14 px)
+Display 56/64 bold (mobile 36/44), H1 40/48 bold (mobile 28/36), H2 28/36 semibold, H3 20/28 semibold (event card titles), Body 16/24, Small 14/20 medium (meta text, badges, buttons), Caption 12/16 medium. Create these as text styles.
+
+SHAPE AND DEPTH
+Cards 16 px radius, buttons and inputs 12 px, badges fully round. Card shadow: 0 1px 3px rgba(31,29,43,0.08), 0 8px 24px rgba(31,29,43,0.06). Buttons and chips at least 44 px tall. Use one consistent line-icon set (2 px stroke, 20 px) for calendar, clock, map pin, users, search, arrow, tick and menu.
+
+LOGO
+Navbar and footer show a two-ring symbol (one violet ring, one green ring, overlapping) at 40 px next to the word "CampusConnect" in bold. Keep it as a component called "Logo" with a light variant and a dark variant. Leave it easy to replace.
+
+POSTERS
+Event posters are gradient rectangles with NO text on them. Add large soft translucent circles and one big white line-icon at 40% opacity for the category. Gradients: Cultural & Social pink #EC4899 to violet #8B5CF6 (music-note icon); Sports & Gaming green #22C55E to cyan #0891B2 (trophy icon); Hackathon & Showcase violet #4637D2 to sky #38BDF8 (code icon); Workshop amber #F59E0B to red #EF4444 (wrench icon). The same category always uses the same gradient.
+
+COMPONENTS (build first, as Components with variants, named exactly)
+Navbar (desktop: 72 px tall, white, bottom border, Logo left, links Events, Clubs, Units, Dashboard, and a small "Student" chip on the right; mobile: Logo and a menu button). Footer (night background, dark Logo, the same links in footer text colour, divider, and the line "Unofficial student project. Clubs and events are sample data."). Button (Primary, Secondary with violet border and text, Disabled; heights 44 and 52). CategoryBadge. SeatsBadge (four variants above). HostChip ("Hosted by Dance Club" with a small users icon). SearchBar (magnifier icon, placeholder "Search events, clubs or hosts", and a Search button). FilterChip (default, and selected with violet fill and white text). EventCard (poster on top, category badge, title, date and time, venue, host, seats badge; variants: default, almost full, full, cancelled, registered). ClubTile (icon, club name, category badge, member count). UnitPill. RegisterButton (Register, Registered with tick, Event Full, Cancelled, Registration closed). Toast (dark bar with tick). EmptyState.
+
+SAMPLE CONTENT (all invented; use exactly this, sorted by date)
+1. Annual Dance Fest | Cultural & Social | Sat 14 Nov 2026 · 16:00 | Main Auditorium | Dance Club | 40 of 120 seats left
+2. Inter-Faculty Football Cup | Sports & Gaming | Sun 22 Nov 2026 · 10:00 | Sports Ground | Sports Club | Full
+3. Open Mic Evening | Cultural & Social | Fri 27 Nov 2026 · 17:30 | Amphitheatre | Music Club | 12 of 60 seats left
+4. 24-Hour Hackathon | Hackathon & Showcase | Sat 28 Nov 2026 · 10:00 | Innovation Lab | Hackathon Club | 3 of 80 seats left, Almost full
+5. E-Sports Night | Sports & Gaming | Sat 28 Nov 2026 · 18:00 | Seminar Hall 2 | E-Sports Club | Cancelled
+6. Intro to Maker Tools | Workshop | Wed 2 Dec 2026 · 14:00 | Maker Space | Beyonder Studios | 25 of 30 seats left
+Clubs (with categories and member counts): Dance Club (Cultural & Social, 128), Music Club (Cultural & Social, 96), Literature Club (Cultural & Social, 64), Sports Club (Sports & Gaming, 215), E-Sports Club (Sports & Gaming, 87), Hackathon Club (Hackathon & Showcase, 142).
+Units: Digital Transformation, eMobility, Energy, Life Sciences, Entrepreneurship, Beyonder Studios, AI & Decentralized Technologies.
+
+PAGE 1: HOME (desktop)
+Navbar. Hero on night, about 520 px tall, with a subtle diagonal gradient from #1C1750 to #2B2093 and faint decorative violet and green rings at the edges. Centred white Display headline "Find what's happening at Atria", one line of subtext "Discover workshops, hackathons, cultural nights and more, all on campus." in footer text colour, a large SearchBar (72 px tall) and two FilterChips beneath: "Workshop" and "Hackathon & Showcase". Then a Featured event card overlapping the bottom of the hero: a wide white card, poster on the left (half the width), and on the right a green "Featured" tag with dark text, the H1-size title "Annual Dance Fest", date and time, venue, host chip, a SeatsBadge "40 seats left" and a Primary "View event" button. Then H2 "Upcoming events" with a "See all events" link and three EventCards in a row (Annual Dance Fest, 24-Hour Hackathon, Intro to Maker Tools). Then H2 "Popular clubs" with the six ClubTiles in one row. Then H2 "Explore units" with the seven UnitPills wrapping neatly. Footer.
+
+PAGE 2: EVENTS (desktop)
+Navbar. Page header on a primary-tint band: H1 "Events" and a SearchBar. Filter row: FilterChips All (selected), Cultural & Social, Sports & Gaming, Hackathon & Showcase, Workshop, Guest Talk, Career & Internship, plus two dropdowns "Any date" and "All hosts". Small text "6 events". A grid of the six EventCards, 3 across by 2 rows, in the date order above, showing every seat state. Footer. "Events / Empty" is the same page with the filter row kept, the search box showing "zzzz", and the grid replaced by a centred EmptyState: search icon, "No events match your search", "Try a different word or clear your filters.", and a Primary "Clear filters" button.
+
+PAGE 3: EVENT DETAILS (desktop), event "Annual Dance Fest"
+Navbar. "Back to events" link with an arrow. A wide rounded poster banner (about 360 px tall). Two columns: the left column (about 8 of 12) has CategoryBadge "Cultural & Social", HostChip "Hosted by Dance Club", the H1 title, a 2 to 3 sentence description about a night of dance performances by student groups, and an info list with icons: Date "Sat 14 Nov 2026", Time "16:00", Venue "Main Auditorium", Hosted by "Dance Club". The right column (4 of 12) has a sticky white registration card with the green SeatsBadge "40 seats left", the line "40 of 120 seats left", and a full-width 52 px Primary "Register" button. Footer. Duplicate for the states: "Registered" (Secondary button with tick "Registered", seats line "39 of 120 seats left", and a Toast at the bottom centre "You're registered for Annual Dance Fest"); "Full" (red "Full" badge, "0 of 120 seats left", disabled button "Event Full"); "Cancelled" (grey "Cancelled" badge, no seats line, disabled button "Cancelled", and a grey banner under the title "This event was cancelled").
+
+PAGE 4: NOT FOUND (desktop)
+Navbar. Centred vertically: a huge "404" in primary violet with a soft tint circle behind it, headline "We couldn't find that page" (H1), one line "The page may have moved, or the link may be wrong.", and a Primary "Back to events" button. Footer.
+
+MOBILE (375 px) for all four pages
+Same colours, fonts and content. One column, 16 px side margins. Navbar collapses to Logo and a menu button. The hero headline is 36 px. Cards stack in one column, and the Featured card stacks with the poster on top. Club tiles become a 2-column grid. On Events, the filter row hides behind a "Filters" button. On Event Details, the registration card sits under the info list. Every button and chip stays at least 44 px tall. The footer keeps the notice.
+
+QUALITY RULES
+Keep the same navbar, footer, card style, spacing and icon style on every page. Use the variables and text styles above, never loose hex codes. Check that every text and background pair has at least 4.5:1 contrast. Keep aligned edges and consistent spacing. Do not add pages, sections, features or copy that are not listed here. When finished, list every frame and component you created.
