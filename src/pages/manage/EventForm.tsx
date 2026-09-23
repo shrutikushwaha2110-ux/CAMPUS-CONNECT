@@ -6,6 +6,7 @@ import type { AppEvent } from '../../data/types';
 import { EVENT_CATEGORIES, type EventCategory } from '../../lib/constants';
 import { allowedHosts, canManageEvent } from '../../lib/permissions';
 import { validateEvent, type Errors } from '../../lib/validation';
+import { seatsTakenNow } from '../../lib/seats';
 import { NotAllowed } from '../../components/RequireRole';
 import { Button, Card, EmptyState, Field, PageHeader, SelectInput, TextArea, TextInput, useToast } from '../../components/ui';
 
@@ -43,7 +44,7 @@ export function EventForm() {
 
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
   // Rule 15: seats can't drop below seats already taken (baseline + site registrations)
-  const takenNow = existing ? existing.seatsTaken + localTaken(existing.id) : 0;
+  const takenNow = existing ? seatsTakenNow(existing.seatsTaken, localTaken(existing.id)) : 0;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

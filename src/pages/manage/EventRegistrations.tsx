@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import { useAppData } from '../../state/AppData';
 import { canManageEvent } from '../../lib/permissions';
 import { formatDate } from '../../lib/date';
+import { unnamedEarlierSeats } from '../../lib/seats';
 import { NotAllowed } from '../../components/RequireRole';
 import { SeatsBar, EventStatusPill } from '../../components/staff';
 import { Button, Card, EmptyState, PageHeader, RegStatusPill, Section, StatTile, useToast } from '../../components/ui';
@@ -25,7 +26,7 @@ export function EventRegistrations() {
     pending: regs.filter(r => r.status === 'pending').length,
     rejected: regs.filter(r => r.status === 'rejected').length,
   };
-  const earlierOthers = Math.max(0, event.seatsTaken - event.registrations.length);
+  const earlierOthers = unnamedEarlierSeats(event.seatsTaken, event.registrations.length);
   const back = session?.role === 'faculty' ? '/faculty/events' : '/manage';
 
   const review = (regId: string, status: RegStatus, name: string) => {

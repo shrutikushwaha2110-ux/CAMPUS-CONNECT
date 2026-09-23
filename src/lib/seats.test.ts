@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { seatsLeft, seatStatus } from './seats';
+import { seatsLeft, seatStatus, seatsFilled, seatsTakenNow, unnamedEarlierSeats } from './seats';
+
+describe('staff seat figures (O5, O7, O8)', () => {
+  it('seats taken now = baseline + site registrations', () => {
+    expect(seatsTakenNow(80, 2)).toBe(82);
+  });
+  it('seats filled never exceeds the total', () => {
+    expect(seatsFilled(30, 29, 5)).toBe(30);
+    expect(seatsFilled(120, 80, 1)).toBe(81);
+  });
+  it('unnamed earlier seats never goes negative', () => {
+    expect(unnamedEarlierSeats(80, 4)).toBe(76);
+    expect(unnamedEarlierSeats(0, 2)).toBe(0);
+  });
+});
 
 describe('seatsLeft (rule 2)', () => {
   it('subtracts seats taken from total', () => {

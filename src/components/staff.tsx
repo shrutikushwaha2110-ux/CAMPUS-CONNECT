@@ -4,13 +4,13 @@ import { Link } from 'react-router';
 import { useAppData } from '../state/AppData';
 import type { AppEvent, Announcement } from '../data/types';
 import { formatDate, getToday } from '../lib/date';
-import { seatsLeft } from '../lib/seats';
+import { seatsFilled } from '../lib/seats';
 import { canManageEvent, canManageAnnouncement } from '../lib/permissions';
 import { Button, ButtonLink, Card, ConfirmDialog, EmptyState, Pill, useToast } from './ui';
 
 export function SeatsBar({ event }: { event: AppEvent }) {
   const { localTaken } = useAppData();
-  const filled = event.seatsTotal - seatsLeft(event.seatsTotal, event.seatsTaken, localTaken(event.id));
+  const filled = seatsFilled(event.seatsTotal, event.seatsTaken, localTaken(event.id));
   const pct = Math.min(100, Math.round((filled / Math.max(1, event.seatsTotal)) * 100));
   return (
     <div className="min-w-[120px]" data-seats-filled={`${filled}/${event.seatsTotal}`}>

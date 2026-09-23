@@ -2,7 +2,7 @@
 import { Link } from 'react-router';
 import { useAppData } from '../../state/AppData';
 import { getToday, formatDate } from '../../lib/date';
-import { seatsLeft } from '../../lib/seats';
+import { seatsLeft, seatStatus } from '../../lib/seats';
 import { upcomingSorted } from '../../lib/eventFilter';
 import { AnnouncementsList } from '../../components/staff';
 import { ButtonLink, Card, EmptyState, PageHeader, Pill, Section, StatTile } from '../../components/ui';
@@ -19,9 +19,10 @@ export function FacultyHome() {
   const today = getToday();
   const upcoming = upcomingSorted(events).filter(e => e.status === 'active');
   const pending = registrations.filter(r => r.status === 'pending');
-  // Needs attention: events with pending approvals or fewer than 5 seats left
+  // Needs attention: events with pending approvals, or "almost full"/"full" by the shared seat rule (F11)
+  const status = (e: typeof upcoming[number]) => seatStatus(e.seatsTotal, e.seatsTaken, localTaken(e.id), e.status);
   const attention = upcoming.filter(e =>
-    pending.some(r => r.eventId === e.id) || seatsLeft(e.seatsTotal, e.seatsTaken, localTaken(e.id)) <= 5,
+    pending.some(r => r.eventId === e.id) || status(e) === 'almost-full' || status(e) === 'full',
   ).slice(0, 6);
 
   return (
@@ -61,7 +62,8 @@ export function FacultyHome() {
                       <p className="text-xs text-text-muted">{formatDate(e.date)} · {hostName(e)}</p>
                     </div>
                     {p > 0 && <Pill tone="amber">{p} pending</Pill>}
-                    {left <= 5 && <Pill tone={left === 0 ? 'red' : 'amber'}>{left === 0 ? 'Full' : `${left} left`}</Pill>}
+                    {status(e) === 'full' && <Pill tone="red">Full</Pill>}
+                    {status(e) === 'almost-full' && <Pill tone="amber">{left} left</Pill>}
                     <Link to={`/manage/events/${e.id}/registrations`} className="text-xs font-semibold text-primary">Review →</Link>
                   </Card>
                 );
