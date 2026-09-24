@@ -8,7 +8,7 @@ const ev = (id: string) => events.find(e => e.id === id) as AppEvent;
 const reg = (eventId: string, userId: string, status: Registration['status'] = 'confirmed'): Registration =>
   ({ id: `${eventId}-${userId}`, eventId, userId, status, createdAt: '2026-11-01T10:00:00Z' });
 const check = (id: string, role: string | null, userId: string | null, regs: Registration[] = []) =>
-  registerBlockReason({ event: ev(id), role, userId, regs, today: TODAY });
+  registerBlockReason({ event: ev(id), role, userId, regs, taken: localActiveCount(id, regs), today: TODAY });
 
 describe('who can register (rules 1, 3, 4, 6, 21)', () => {
   it('a logged-in student can register for any club event (membership not needed)', () => {

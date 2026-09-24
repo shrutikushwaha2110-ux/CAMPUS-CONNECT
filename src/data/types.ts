@@ -35,14 +35,17 @@ export interface AppUnit {
   facultyName: string;
 }
 
+export type UserStatus = 'approved' | 'pending' | 'declined';
+
+// What the browser sees. Password hashes never leave the server.
 export interface User {
   id: string;
   name: string;
   email: string;
-  password: string; // demo only, NOT real security: this is a front-end-only prototype
   role: Role;
-  clubId?: string; // only for club managers
-  active: boolean;
+  clubId?: string; // club managers: the club they manage; faculty: the club they head
+  active: boolean; // false = deactivated by faculty
+  status: UserStatus; // self sign-ups for staff roles start as 'pending'
 }
 
 export interface Registration {
@@ -70,6 +73,7 @@ export interface Announcement {
   title: string;
   body: string;
   authorId: string;
+  authorName?: string; // filled in by the server
   createdAt: string;
   updatedAt: string;
 }

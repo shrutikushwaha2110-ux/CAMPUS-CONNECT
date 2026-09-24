@@ -2,7 +2,7 @@
 
 **Team:** Shruti (Figma design) · Raju (student pages & logic) · Sohail (staff pages)
 **Design source:** Figma Make file "Add Logo and Name" (`ej75XJhPL0fvejEo92cI3I`)
-**Version:** v2.1 (2026-09-24): staff sections trimmed; each faculty member heads ONE club. v2 (2026-09-23): three roles with separate logins and dashboards. v1: single demo student.
+**Version:** v3 (2026-09-24): SQLite database + Node API, sign-up with hashed passwords, approval of staff sign-ups. v2.1 (2026-09-24): staff sections trimmed; each faculty member heads ONE club. v2 (2026-09-23): three roles with separate logins and dashboards. v1: single demo student.
 
 > This file is the source of truth. The team writes it; Claude may help think it through. A Claude Code hook blocks edits to it unless the team lists it in `.claude/hooks/approved-edits.txt` (see CLAUDE.md → Hooks).
 
@@ -21,7 +21,7 @@ The university has **units** (e.g. Digital Transformation) that **supervise** cl
 | **Club Manager** | `/login/club-manager` | `/manage` | Assigned to exactly **one** club. The navbar has **only two sections: "Manage club" and "Events"** (Home, Clubs and Units redirect to `/manage`). *Manage club*: club info, members, upcoming events (edit / cancel / registrations with accept-reject), + New event, + Announcement. *Events*: the same page and UI students use, showing only the club's upcoming hosted events, with its announcements below. Can never open another club's event or management data. Cannot register for events or manage clubs/users. |
 | **Faculty / Admin** | `/login/faculty` | `/faculty` | **Head of ONE club** (`clubId`). Navbar: Admin · My club · Events · Clubs · Users (no Units). Manages **only their own club** (view members & events, edit, delete) plus **university/unit-hosted events** (units are run by faculty, not clubs). May **add new clubs**. Users: add/edit/deactivate **students** and **their own club's managers**; may create a faculty head for a club that has none; can **never edit or deactivate another faculty member**. Announcements: university-wide or their own club. The admin dashboard shows campus-wide statistics (read-only). |
 
-Each role has its **own login page** and **own dashboard**. An account can only sign in on the page for its role. Logins are demo accounts in `src/data/users.json` (front-end only, **not real security**). Demo passwords: `demo123` (students, managers), `admin123` (faculty).
+Each role has its **own login page** and **own dashboard**. An account can only sign in on the page for its role. Accounts live in the **database** (`users` table) with **salted scrypt password hashes**. Anyone can **sign up** (`/signup`): Students can use the site at once; Club Manager and Faculty sign-ups stay **pending** until approved (Club Manager → by that club's faculty head; Faculty → by any faculty member, only for a club with no head). The seeded demo accounts use `demo123` (students, managers) and `admin123` (faculty).
 
 Using one browser for every role is on purpose: in the viva you can register as a student, log in as that club's manager, and immediately see the registration.
 
@@ -30,8 +30,9 @@ Using one browser for every role is on purpose: in the viva you can register as 
 - React 19 + Vite + **TypeScript**, React Router **hash router** (`/#/events/…`)
 - **Three.js** for the Home hero only (lazy-loaded)
 - Tailwind CSS v4 with the Figma colour tokens
-- Data: `src/data/*.json` seed + localStorage for everything people change. No backend.
-- One app store (`src/state/AppData.tsx`) merges seed + localStorage; all rules are pure functions in `src/lib/`
+- **Backend:** Node + Express API (`server/app.ts`) with a **SQLite** database (Node's built-in `node:sqlite`) at `server/data/campusconnect.db`, seeded from `src/data/*.json` on first run. In development the API runs inside the Vite dev server (`/api/*`); in production `npm start` serves the API + `dist/` on one port.
+- **Sessions:** random token in an `httpOnly` cookie; the DB stores only its SHA-256. Passwords are hashed with salted scrypt and never returned by the API.
+- One browser store (`src/state/AppData.tsx`) loads `/api/state` (already filtered to what the role may see) and calls the API for every change; all rules are pure functions in `src/lib/`, used by **both** the browser and the server
 - Tests: Vitest (rules), `npm run test:e2e` (real browser, every role), `npm run test:hooks`, manual log in `TESTS.md`
 
 ## 3A. 3D design and UX requirements
@@ -58,7 +59,8 @@ Using one browser for every role is on purpose: in the viva you can register as 
 | Page | Route | Contents |
 |---|---|---|
 | Choose login | `/login` | Three cards: Student, Club Manager, Faculty/Admin |
-| Role login | `/login/student`, `/login/club-manager`, `/login/faculty` | Email + password, what the role can do, demo account hint |
+| Role login | `/login/student`, `/login/club-manager`, `/login/faculty` | Email + password (checked by the server), what the role can do, demo account hint, "Sign up" link |
+| Sign up | `/signup` | Role choice (Student / Club Manager / Faculty), name, email, club (staff only; faculty: clubs without a head), password + confirm. Student → logged in; staff → "Request sent, waiting for approval" |
 
 ### Student (role `student`)
 | Page | Route | Contents |
@@ -98,7 +100,11 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | ID | Requirement |
 |---|---|
 | A1 | Separate login page per role; an account only signs in on its own role's page; wrong password / deactivated account / manager without an active club are refused with a message; session survives refresh; active user + role shown in the navbar; Log out / switch role any time |
-| R17 | Role pages are protected by the session, not by hiding links: typing a restricted URL shows "Not available for your role" or redirects to login |
+| R17 | Role pages are protected by the session, not by hiding links: typing a restricted URL shows "Not available for your role" or redirects to login. **The API enforces every rule again**, so direct requests can't bypass the pages |
+| SU1 | Anyone can create an account at `/signup` (name, email, password 8+ chars with letters and numbers, typed twice, role, club for staff). Email must be unique. A new Student is logged in straight away and can log in again later with the same email + password |
+| SU2 | Club Manager / Faculty sign-ups are **pending**: login is refused with "waiting for approval" until a faculty member approves them in Users → Sign-up requests (Club Manager: that club's head; Faculty: any faculty, for a club with no head) |
+| SU3 | A declined sign-up cannot log in |
+| SU4 | Passwords are stored only as salted hashes; the API never sends passwords or hashes to the browser; wrong email and wrong password give the same message |
 
 ### Student
 | ID | Requirement |
@@ -169,15 +175,15 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 **Event:** `id, title, category, date, time, venue, description, seatsTotal, seatsTaken, posterUrl, hostType (club|unit), hostId, status (active|cancelled), registrations (sample attendee names), requiresApproval?`
 **Club:** `id, name, category, description, memberCount (baseline), unitId, managerName`
 **Unit:** `id, name, description, facultyName`
-**User:** `id, name, email, password (demo), role (student|clubManager|faculty), clubId? (club managers: the club they manage; faculty: the club they head), active`
+**User:** `id, name, email (unique, case-insensitive), password_hash (server only), role (student|clubManager|faculty), clubId? (club managers: the club they manage; faculty: the club they head), active, status (approved|pending|declined), createdAt`
 **Announcement:** `id, clubId (null = university-wide), title, body, authorId, createdAt, updatedAt`
 **Registration:** `id, eventId, userId, status (confirmed|pending|rejected), createdAt`
 **Membership:** `userId, clubId, joinedAt` · **Follow:** `userId, unitId`
-**Session** (`campusconnect.session`): `{ userId, role, clubId? }` (clubId for managers and faculty), re-validated against users on every load.
+**Session:** `sessions` table (token hash, user, expiry, 7 days) + `cc_session` httpOnly cookie. The API turns it into `{ userId, role, clubId? }` and re-validates it on every request.
 
-**localStorage keys:** `campusconnect.session`, `.registrations`, `.memberships`, `.follows`, `.eventChanges`, `.clubChanges`, `.userChanges`, `.announcementChanges`. The v1 keys `joinedClubs` and `followedUnits` are removed on load.
+**Database tables (SQLite):** `users`, `sessions`, `units`, `clubs` (+ `deleted` flag), `events`, `registrations` (unique per event + user), `memberships`, `follows`, `announcements` (+ `deleted` flag). Deleted clubs/announcements are marked, never erased. Nothing is kept in localStorage any more.
 
-**Merge rule:** the site shows seed JSON merged with the `*Changes` maps by `id`; a change under a new id is a created record; `_deleted: true` hides a record (marked, never erased).
+**What each role receives from `/api/state`:** everyone gets events, clubs, units, announcements, and per-event seat counts + per-club member counts. Students get only their own registrations/memberships/follows and their own user record. Club Managers also get their club's members and its events' registrations (with those students' names). Faculty get all users, registrations and memberships.
 
 **Categories:** Cultural & Social, Sports & Gaming, Hackathon & Showcase, Workshop, Guest Talk, Career & Internship. **Club categories:** Arts & Culture, Sports & Gaming, Technology.
 
@@ -193,7 +199,7 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | Accounts | 4 students, 1 manager per club (6), 1 faculty head per club (6; `admin@atria.edu` heads Dance, `meera.nair@` Music, `vikram.shah@` Hackathon…): see `users.json` |
 | Announcements | 1 university-wide, 1 Dance Club, 1 Music Club |
 
-Reset the demo: DevTools → Application → Local Storage → clear `campusconnect.*`.
+Reset the demo: `npm run db:reset` (wipes the database and re-seeds it; all sign-ups are lost).
 
 ## 7. Rules
 

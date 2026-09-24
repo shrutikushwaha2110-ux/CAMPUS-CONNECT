@@ -36,10 +36,10 @@ export function EventsTable({ events, showHost = false }: { events: AppEvent[]; 
 
   if (events.length === 0) return <EmptyState>No events yet.</EmptyState>;
 
-  const confirmCancel = () => {
+  const confirmCancel = async () => {
     if (!cancelling) return;
-    cancelEvent(cancelling.id);
-    toast(`${cancelling.title} was cancelled. Registered students will see it as cancelled.`);
+    const r = await cancelEvent(cancelling.id);
+    toast(r.ok ? `${cancelling.title} was cancelled. Registered students will see it as cancelled.` : r.error);
     setCancelling(null);
   };
 
@@ -86,7 +86,7 @@ export function EventsTable({ events, showHost = false }: { events: AppEvent[]; 
 
 // Announcements with Edit / Delete for the ones this person may manage
 export function AnnouncementsList({ items, showScope = false }: { items: Announcement[]; showScope?: boolean }) {
-  const { session, deleteAnnouncement, clubs, users } = useAppData();
+  const { session, deleteAnnouncement, clubs } = useAppData();
   const toast = useToast();
   const [deleting, setDeleting] = useState<Announcement | null>(null);
 
@@ -100,7 +100,7 @@ export function AnnouncementsList({ items, showScope = false }: { items: Announc
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 {showScope && <Pill tone={a.clubId ? 'purple' : 'grey'}>{a.clubId ? clubs.find(c => c.id === a.clubId)?.name : 'University-wide'}</Pill>}
-                <span className="text-xs text-text-muted">{formatDate(a.createdAt.slice(0, 10))} · {users.find(u => u.id === a.authorId)?.name ?? 'Staff'}</span>
+                <span className="text-xs text-text-muted">{formatDate(a.createdAt.slice(0, 10))} · {a.authorName ?? 'Staff'}</span>
               </div>
               <p className="font-semibold text-sm text-text">{a.title}</p>
               <p className="text-sm text-text-muted mt-1">{a.body}</p>
@@ -119,7 +119,7 @@ export function AnnouncementsList({ items, showScope = false }: { items: Announc
         title="Are you sure?"
         message={<>Delete the announcement <strong>{deleting?.title}</strong>?</>}
         confirmLabel="Delete"
-        onConfirm={() => { if (deleting) { deleteAnnouncement(deleting.id); toast('Announcement deleted'); } setDeleting(null); }}
+        onConfirm={async () => { if (deleting) { const r = await deleteAnnouncement(deleting.id); toast(r.ok ? 'Announcement deleted' : r.error); } setDeleting(null); }}
         onCancel={() => setDeleting(null)}
       />
     </>

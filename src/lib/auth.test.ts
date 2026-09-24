@@ -1,43 +1,41 @@
 import { describe, it, expect } from 'vitest';
-import users from '../data/users.json';
+import seed from '../data/users.json';
 import clubs from '../data/clubs.json';
 import type { User } from '../data/types';
-import { authenticate, validateSession } from './auth';
+import { loginDecision, validateSession } from './auth';
 
-const all = users as User[];
+// Seed users as the server stores them (approved, no password)
+const all: User[] = seed.map(({ password: _p, ...u }) => ({ ...u, status: 'approved' }) as User);
 const live = new Set(clubs.map(c => c.id));
+const byId = (id: string) => all.find(u => u.id === id)!;
 
-describe('separate role logins (A1)', () => {
-  it('student logs in on the student page', () => {
-    expect(authenticate('shruti@student.atria.edu', 'demo123', 'student', all, live))
-      .toEqual({ ok: true, session: { userId: 'stu-shruti', role: 'student' } });
+describe('who may log in on which page (A1, SU2)', () => {
+  it('student on the student page', () => {
+    expect(loginDecision(byId('stu-shruti'), 'student', live)).toEqual({ ok: true, session: { userId: 'stu-shruti', role: 'student' } });
   });
   it('club manager session carries their club', () => {
-    expect(authenticate('dance.manager@atria.edu', 'demo123', 'clubManager', all, live))
-      .toEqual({ ok: true, session: { userId: 'mgr-dance', role: 'clubManager', clubId: 'dance-club' } });
+    expect(loginDecision(byId('mgr-dance'), 'clubManager', live)).toEqual({ ok: true, session: { userId: 'mgr-dance', role: 'clubManager', clubId: 'dance-club' } });
   });
-  it('faculty/admin logs in and the session carries the club they head', () => {
-    expect(authenticate('ADMIN@atria.edu', 'admin123', 'faculty', all, live))
-      .toEqual({ ok: true, session: { userId: 'fac-admin', role: 'faculty', clubId: 'dance-club' } });
+  it('faculty session carries the club they head', () => {
+    expect(loginDecision(byId('fac-admin'), 'faculty', live)).toEqual({ ok: true, session: { userId: 'fac-admin', role: 'faculty', clubId: 'dance-club' } });
   });
-  it('a faculty head whose club was deleted cannot log in', () => {
+  it('an account cannot use another role’s login page', () => {
+    expect(loginDecision(byId('stu-shruti'), 'faculty', live).ok).toBe(false);
+  });
+  it('SU2: a pending sign-up cannot log in yet', () => {
+    const r = loginDecision({ ...byId('stu-raju'), role: 'clubManager', clubId: 'dance-club', status: 'pending' }, 'clubManager', live);
+    expect(r).toEqual({ ok: false, error: 'Your account is waiting for approval by a faculty member.' });
+  });
+  it('SU3: a declined sign-up cannot log in', () => {
+    expect(loginDecision({ ...byId('stu-raju'), status: 'declined' }, 'student', live).ok).toBe(false);
+  });
+  it('U2: a deactivated account cannot log in', () => {
+    expect(loginDecision({ ...byId('stu-raju'), active: false }, 'student', live).ok).toBe(false);
+  });
+  it('manager / faculty whose club was deleted cannot log in', () => {
     const noMusic = new Set([...live].filter(id => id !== 'music-club'));
-    expect(authenticate('meera.nair@atria.edu', 'admin123', 'faculty', all, noMusic).ok).toBe(false);
-  });
-  it('wrong password is rejected', () => {
-    expect(authenticate('admin@atria.edu', 'nope', 'faculty', all, live).ok).toBe(false);
-  });
-  it('a student account cannot use the faculty login page', () => {
-    const r = authenticate('shruti@student.atria.edu', 'demo123', 'faculty', all, live);
-    expect(r.ok).toBe(false);
-  });
-  it('a deactivated account cannot log in (U2)', () => {
-    const off = all.map(u => (u.id === 'stu-raju' ? { ...u, active: false } : u));
-    expect(authenticate('raju@student.atria.edu', 'demo123', 'student', off, live).ok).toBe(false);
-  });
-  it('a manager whose club was deleted cannot log in', () => {
-    const noDance = new Set([...live].filter(id => id !== 'dance-club'));
-    expect(authenticate('dance.manager@atria.edu', 'demo123', 'clubManager', all, noDance).ok).toBe(false);
+    expect(loginDecision(byId('mgr-music'), 'clubManager', noMusic).ok).toBe(false);
+    expect(loginDecision(byId('fac-music'), 'faculty', noMusic).ok).toBe(false);
   });
 });
 
@@ -51,7 +49,11 @@ describe('validateSession', () => {
     const off = all.map(u => (u.id === 'stu-shruti' ? { ...u, active: false } : u));
     expect(validateSession({ userId: 'stu-shruti', role: 'student' }, off, live)).toBeNull();
   });
-  it('drops old-format sessions with no userId', () => {
+  it('drops a session whose user is not approved', () => {
+    const pend = all.map(u => (u.id === 'stu-shruti' ? { ...u, status: 'pending' as const } : u));
+    expect(validateSession({ userId: 'stu-shruti', role: 'student' }, pend, live)).toBeNull();
+  });
+  it('drops malformed sessions with no userId', () => {
     expect(validateSession({ role: 'student' } as never, all, live)).toBeNull();
   });
 });

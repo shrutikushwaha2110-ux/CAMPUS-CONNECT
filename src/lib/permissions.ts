@@ -59,17 +59,33 @@ export function assignableClubs(
   actor: Actor | null | undefined,
   role: string,
   clubs: Array<{ id: string; name: string }>,
-  users: Array<{ id: string; role: string; clubId?: string; active: boolean }>,
+  users: Array<{ id: string; role: string; clubId?: string; active: boolean; status?: string }>,
   editingUserId?: string,
 ): Array<{ id: string; name: string }> {
   if (!isFaculty(actor)) return [];
   if (role === 'clubManager') return clubs.filter(c => c.id === actor!.clubId);
   if (role === 'faculty') {
     // a new faculty head can only be given a club that has no active head yet
-    const headed = new Set(users.filter(u => u.role === 'faculty' && u.active && u.id !== editingUserId).map(u => u.clubId));
+    const headed = new Set(users.filter(u => u.role === 'faculty' && u.active && (u.status ?? 'approved') === 'approved' && u.id !== editingUserId).map(u => u.clubId));
     return clubs.filter(c => !headed.has(c.id));
   }
   return [];
+}
+
+// SU2: who may approve / decline a pending self sign-up
+// - Club Manager request: the faculty head of that club
+// - Faculty request: any faculty member, while the club still has no approved, active head
+export function canReviewSignup(
+  actor: Actor | null | undefined,
+  target: { role: string; clubId?: string; status: string },
+  users: Array<{ id: string; role: string; clubId?: string; active: boolean; status: string }>,
+): boolean {
+  if (!isFaculty(actor) || target.status !== 'pending') return false;
+  if (target.role === 'clubManager') return target.clubId === actor!.clubId;
+  if (target.role === 'faculty') {
+    return !!target.clubId && !users.some(u => u.role === 'faculty' && u.status === 'approved' && u.active && u.clubId === target.clubId);
+  }
+  return false;
 }
 
 export interface HostOption { type: 'club' | 'unit'; id: string; name: string }

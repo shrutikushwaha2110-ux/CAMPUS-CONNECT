@@ -1,241 +1,152 @@
-// One store for the whole app: seed JSON + localStorage changes, merged (SPEC §6).
-// Pages read from here via hooks in src/hooks; every rule it applies comes from src/lib.
+// One store for the whole app. The DATABASE (via the API in server/app.ts) is the source of truth:
+// this loads /api/state (already filtered to what the logged-in role may see), and every action calls the API,
+// which re-checks the rules, then reloads the state. Pages read it through the hooks in src/hooks.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import seedEvents from '../data/events.json';
-import seedClubs from '../data/clubs.json';
-import seedUnits from '../data/units.json';
-import seedUsers from '../data/users.json';
-import seedAnnouncements from '../data/announcements.json';
 import type {
   AppEvent, AppClub, AppUnit, User, Registration, Membership, Follow, Announcement, Session,
 } from '../data/types';
-import { KEYS, read, write, readList, clearLegacy } from '../lib/storage';
-import { mergeById, withChange, makeId, type Changes } from '../lib/merge';
-import { getToday } from '../lib/date';
-import { validateSession } from '../lib/auth';
-import { initialStatus, localActiveCount, registerBlockReason, reviewBlockReason, findRegistration } from '../lib/registrations';
-import { joinBlockReason } from '../lib/memberships';
-import { eventsToCancelOnDelete } from '../lib/clubs';
-import type { RegStatus } from '../lib/constants';
-import { canManageEvent, canEditClub, canAddClub, canDeleteClub, canManageAnnouncement, canEditUser, canDeactivateUser, isFaculty } from '../lib/permissions';
+import type { RegStatus, Role } from '../lib/constants';
+import { makeId } from '../lib/ids';
+import { findRegistration } from '../lib/registrations';
+import { api } from './api';
 
-interface AppData {
-  // data
+interface ServerState {
   session: Session | null;
   currentUser: User | null;
   users: User[];
   events: AppEvent[];
   clubs: AppClub[];
   units: AppUnit[];
+  announcements: Announcement[];
   registrations: Registration[];
   memberships: Membership[];
   follows: Follow[];
-  announcements: Announcement[];
+  seatCounts: Record<string, number>;
+  memberCounts: Record<string, number>;
+  openHeadClubs: string[];
+}
+
+export type ActionResult = { ok: true } | { ok: false; error: string; errors?: Record<string, string> };
+export interface SignupInput { name: string; email: string; password: string; confirm: string; role: Role; clubId?: string }
+
+interface AppData extends ServerState {
   liveClubIds: Set<string>;
   // helpers
-  localTaken: (eventId: string) => number;
+  localTaken: (eventId: string) => number; // site registrations holding a seat (all students)
+  clubMemberCount: (club: AppClub) => number; // baseline + site members (rule 10)
   hostName: (e: { hostType: string; hostId: string }) => string;
-  // session
-  login: (s: Session) => void;
-  logout: () => void;
+  refresh: () => Promise<void>;
+  // auth
+  loginWith: (email: string, password: string, role: Role) => Promise<ActionResult>;
+  signup: (input: SignupInput) => Promise<(ActionResult & { status?: 'approved' | 'pending' })>;
+  logout: () => Promise<void>;
   // student actions
-  register: (eventId: string) => Registration | string;
-  cancelRegistration: (eventId: string) => void;
-  joinClub: (clubId: string) => string | null;
-  leaveClub: (clubId: string) => void;
-  followUnit: (unitId: string) => void;
-  unfollowUnit: (unitId: string) => void;
+  register: (eventId: string) => Promise<Registration | string>;
+  cancelRegistration: (eventId: string) => Promise<void>;
+  joinClub: (clubId: string) => Promise<string | null>;
+  leaveClub: (clubId: string) => Promise<void>;
+  followUnit: (unitId: string) => Promise<void>;
+  unfollowUnit: (unitId: string) => Promise<void>;
   // staff actions
-  saveEvent: (event: AppEvent) => void;
-  cancelEvent: (eventId: string) => void;
-  reviewRegistration: (regId: string, status: RegStatus) => string | null;
-  saveClub: (club: AppClub) => void;
-  deleteClub: (clubId: string) => void;
-  saveAnnouncement: (a: Omit<Announcement, 'id' | 'createdAt' | 'updatedAt' | 'authorId'> & { id?: string }) => void;
-  deleteAnnouncement: (id: string) => void;
-  saveUser: (u: User) => void;
+  saveEvent: (event: AppEvent) => Promise<ActionResult>;
+  cancelEvent: (eventId: string) => Promise<ActionResult>;
+  reviewRegistration: (regId: string, status: RegStatus) => Promise<string | null>;
+  saveClub: (club: AppClub) => Promise<ActionResult>;
+  deleteClub: (clubId: string) => Promise<ActionResult>;
+  saveAnnouncement: (a: { id?: string; title: string; body: string; clubId: string | null }) => Promise<ActionResult>;
+  deleteAnnouncement: (id: string) => Promise<ActionResult>;
+  saveUser: (u: User, password?: string) => Promise<ActionResult>;
+  setUserActive: (userId: string, active: boolean) => Promise<ActionResult>;
+  reviewSignup: (userId: string, decision: 'approve' | 'decline') => Promise<ActionResult>;
   newId: (label: string) => string;
 }
 
 const Ctx = createContext<AppData | null>(null);
 
+const toResult = (r: { ok: boolean; error?: string; errors?: Record<string, string> }): ActionResult =>
+  r.ok ? { ok: true } : { ok: false, error: r.error ?? 'Something went wrong.', errors: r.errors };
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  useEffect(() => clearLegacy(), []);
+  const [state, setState] = useState<ServerState | null>(null);
+  const [loadError, setLoadError] = useState('');
 
-  const [eventChanges, setEventChanges] = useState<Changes<AppEvent>>(() => read(KEYS.EVENT_CHANGES, {}));
-  const [clubChanges, setClubChanges] = useState<Changes<AppClub>>(() => read(KEYS.CLUB_CHANGES, {}));
-  const [userChanges, setUserChanges] = useState<Changes<User>>(() => read(KEYS.USER_CHANGES, {}));
-  const [annChanges, setAnnChanges] = useState<Changes<Announcement>>(() => read(KEYS.ANNOUNCEMENT_CHANGES, {}));
-  const [registrations, setRegistrations] = useState<Registration[]>(() => readList(KEYS.REGISTRATIONS));
-  const [memberships, setMemberships] = useState<Membership[]>(() => readList(KEYS.MEMBERSHIPS));
-  const [follows, setFollows] = useState<Follow[]>(() => readList(KEYS.FOLLOWS));
-  const [rawSession, setRawSession] = useState<Session | null>(() => read(KEYS.SESSION, null));
+  const refresh = useCallback(async () => {
+    const r = await api<ServerState>('GET', '/state');
+    if (r.ok && r.data) { setState(r.data); setLoadError(''); } else setLoadError(r.error ?? 'Could not load data.');
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  // Persist every slice when it changes
-  useEffect(() => write(KEYS.EVENT_CHANGES, eventChanges), [eventChanges]);
-  useEffect(() => write(KEYS.CLUB_CHANGES, clubChanges), [clubChanges]);
-  useEffect(() => write(KEYS.USER_CHANGES, userChanges), [userChanges]);
-  useEffect(() => write(KEYS.ANNOUNCEMENT_CHANGES, annChanges), [annChanges]);
-  useEffect(() => write(KEYS.REGISTRATIONS, registrations), [registrations]);
-  useEffect(() => write(KEYS.MEMBERSHIPS, memberships), [memberships]);
-  useEffect(() => write(KEYS.FOLLOWS, follows), [follows]);
-  useEffect(() => write(KEYS.SESSION, rawSession), [rawSession]);
+  // Every write: call the API, then reload what this role may see
+  const run = useCallback(async (method: string, path: string, body?: unknown) => {
+    const r = await api(method, path, body);
+    await refresh();
+    return r;
+  }, [refresh]);
 
-  const events = useMemo(() => mergeById(seedEvents as AppEvent[], eventChanges), [eventChanges]);
-  const clubs = useMemo(() => mergeById(seedClubs as AppClub[], clubChanges), [clubChanges]);
-  const users = useMemo(() => mergeById(seedUsers as User[], userChanges), [userChanges]);
-  const announcements = useMemo(
-    () => mergeById(seedAnnouncements as Announcement[], annChanges).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [annChanges],
-  );
-  const units = seedUnits as AppUnit[];
-  const liveClubIds = useMemo(() => new Set(clubs.map(c => c.id)), [clubs]);
-
-  // Rule 20 / F17: memberships and announcements of deleted clubs are hidden everywhere
-  const liveMemberships = useMemo(() => memberships.filter(m => liveClubIds.has(m.clubId)), [memberships, liveClubIds]);
-  const liveAnnouncements = useMemo(
-    () => announcements.filter(a => a.clubId === null || liveClubIds.has(a.clubId)),
-    [announcements, liveClubIds],
-  );
-
-  // A stored session is re-checked against current users (deactivated / reassigned / club deleted)
-  const session = useMemo(() => validateSession(rawSession, users, liveClubIds), [rawSession, users, liveClubIds]);
-  const currentUser = useMemo(() => users.find(u => u.id === session?.userId) ?? null, [users, session]);
-
-  const localTaken = useCallback((eventId: string) => localActiveCount(eventId, registrations), [registrations]);
+  const s = state;
+  const liveClubIds = useMemo(() => new Set((s?.clubs ?? []).map(c => c.id)), [s]);
+  const localTaken = useCallback((eventId: string) => s?.seatCounts[eventId] ?? 0, [s]);
+  const clubMemberCount = useCallback((club: AppClub) => club.memberCount + (s?.memberCounts[club.id] ?? 0), [s]);
   const hostName = useCallback(
     (e: { hostType: string; hostId: string }) =>
-      e.hostType === 'club'
-        ? clubs.find(c => c.id === e.hostId)?.name ?? (seedClubs.find(c => c.id === e.hostId)?.name ?? e.hostId)
-        : units.find(u => u.id === e.hostId)?.name ?? e.hostId,
-    [clubs, units],
+      e.hostType === 'club' ? s?.clubs.find(c => c.id === e.hostId)?.name ?? 'a former club' : s?.units.find(u => u.id === e.hostId)?.name ?? e.hostId,
+    [s],
   );
 
-  const login = useCallback((s: Session) => setRawSession(s), []);
-  const logout = useCallback(() => setRawSession(null), []);
+  const value: AppData | null = s && {
+    ...s,
+    liveClubIds, localTaken, clubMemberCount, hostName, refresh, newId: makeId,
 
-  const register = useCallback((eventId: string): Registration | string => {
-    const event = events.find(e => e.id === eventId);
-    if (!event) return 'not-found';
-    const block = registerBlockReason({
-      event, role: session?.role ?? null, userId: session?.userId ?? null, regs: registrations, today: getToday(),
-    });
-    if (block) return block;
-    const reg: Registration = {
-      id: makeId(`reg-${eventId}`), eventId, userId: session!.userId, status: initialStatus(event), createdAt: new Date().toISOString(),
-    };
-    setRegistrations(prev => [...prev, reg]);
-    return reg;
-  }, [events, registrations, session]);
+    loginWith: async (email, password, role) => toResult(await run('POST', '/auth/login', { email, password, role })),
+    signup: async input => {
+      const r = await run('POST', '/auth/signup', input);
+      return r.ok ? { ok: true, status: (r.data as { status: 'approved' | 'pending' }).status } : toResult(r);
+    },
+    logout: async () => { await run('POST', '/auth/logout'); },
 
-  // Rule 5: cancelling removes the registration and gives the seat back
-  const cancelRegistration = useCallback((eventId: string) => {
-    if (!session) return;
-    setRegistrations(prev => prev.filter(r => !(r.eventId === eventId && r.userId === session.userId)));
-  }, [session]);
+    register: async eventId => {
+      const r = await run('POST', `/events/${eventId}/registration`);
+      return r.ok ? (r.data as { registration: Registration }).registration : r.error ?? 'error';
+    },
+    cancelRegistration: async eventId => { await run('DELETE', `/events/${eventId}/registration`); },
+    joinClub: async clubId => {
+      const r = await run('POST', `/clubs/${clubId}/membership`);
+      return r.ok ? null : r.error ?? 'error';
+    },
+    leaveClub: async clubId => { await run('DELETE', `/clubs/${clubId}/membership`); },
+    followUnit: async unitId => { await run('POST', `/units/${unitId}/follow`); },
+    unfollowUnit: async unitId => { await run('DELETE', `/units/${unitId}/follow`); },
 
-  const joinClub = useCallback((clubId: string) => {
-    const block = joinBlockReason({
-      role: session?.role ?? null, userId: session?.userId ?? null, clubId, memberships: liveMemberships, liveClubIds,
-    });
-    if (block) return block;
-    setMemberships(prev => [...prev, { userId: session!.userId, clubId, joinedAt: new Date().toISOString() }]);
-    return null;
-  }, [session, liveMemberships, liveClubIds]);
-
-  const leaveClub = useCallback((clubId: string) => {
-    if (!session) return;
-    setMemberships(prev => prev.filter(m => !(m.userId === session.userId && m.clubId === clubId)));
-  }, [session]);
-
-  const followUnit = useCallback((unitId: string) => {
-    if (!session || session.role !== 'student') return;
-    setFollows(prev => (prev.some(f => f.userId === session.userId && f.unitId === unitId) ? prev : [...prev, { userId: session.userId, unitId }]));
-  }, [session]);
-
-  const unfollowUnit = useCallback((unitId: string) => {
-    if (!session) return;
-    setFollows(prev => prev.filter(f => !(f.userId === session.userId && f.unitId === unitId)));
-  }, [session]);
-
-  // Every staff action re-checks permissions here too (rule 17), so a page bug can't bypass them
-  const saveEvent = useCallback((event: AppEvent) => {
-    const before = events.find(e => e.id === event.id);
-    if (!canManageEvent(session, event) || (before && !canManageEvent(session, before))) return;
-    setEventChanges(prev => withChange(prev, event.id, event));
-  }, [events, session]);
-
-  // Rule 16: cancelled, never deleted, so registered students still see it
-  const cancelEvent = useCallback((eventId: string) => {
-    const event = events.find(e => e.id === eventId);
-    if (!event || !canManageEvent(session, event)) return;
-    setEventChanges(prev => withChange(prev, eventId, { status: 'cancelled' }));
-  }, [events, session]);
-
-  const reviewRegistration = useCallback((regId: string, status: RegStatus) => {
-    const reg = registrations.find(r => r.id === regId);
-    const event = reg && events.find(e => e.id === reg.eventId);
-    if (!reg || !event) return 'not-found';
-    if (!canManageEvent(session, event)) return 'forbidden';
-    const block = reviewBlockReason(event, reg, status, registrations);
-    if (block) return block;
-    setRegistrations(prev => prev.map(r => (r.id === regId ? { ...r, status } : r)));
-    return null;
-  }, [registrations, events, session]);
-
-  const saveClub = useCallback((club: AppClub) => {
-    const exists = clubs.some(c => c.id === club.id);
-    if (exists ? !canEditClub(session, club.id) : !canAddClub(session)) return;
-    setClubChanges(prev => withChange(prev, club.id, club));
-  }, [clubs, session]);
-
-  // Rule 20: mark deleted, cancel upcoming events, drop memberships
-  const deleteClub = useCallback((clubId: string) => {
-    if (!canDeleteClub(session, clubId)) return;
-    const toCancel = eventsToCancelOnDelete(clubId, events, getToday());
-    setClubChanges(prev => withChange(prev, clubId, { _deleted: true }));
-    setEventChanges(prev => toCancel.reduce((acc, id) => withChange(acc, id, { status: 'cancelled' }), prev));
-    setMemberships(prev => prev.filter(m => m.clubId !== clubId));
-  }, [events, session]);
-
-  const saveAnnouncement = useCallback((a: Omit<Announcement, 'id' | 'createdAt' | 'updatedAt' | 'authorId'> & { id?: string }) => {
-    const now = new Date().toISOString();
-    const before = a.id ? announcements.find(x => x.id === a.id) : undefined;
-    if (!canManageAnnouncement(session, a) || (before && !canManageAnnouncement(session, before))) return;
-    setAnnChanges(prev => {
-      if (a.id) return withChange(prev, a.id, { title: a.title, body: a.body, clubId: a.clubId, updatedAt: now });
-      const id = makeId(`ann-${a.title}`);
-      return withChange(prev, id, { ...a, id, authorId: session?.userId ?? 'unknown', createdAt: now, updatedAt: now });
-    });
-  }, [session, announcements]);
-
-  const deleteAnnouncement = useCallback((id: string) => {
-    const a = announcements.find(x => x.id === id);
-    if (!a || !canManageAnnouncement(session, a)) return;
-    setAnnChanges(prev => withChange(prev, id, { _deleted: true }));
-  }, [session, announcements]);
-
-  // Rule 26: new accounts by any faculty; existing ones only if this faculty member may edit them
-  const saveUser = useCallback((u: User) => {
-    const before = users.find(x => x.id === u.id);
-    const actor = session && { ...session };
-    if (!isFaculty(actor)) return;
-    if (before) {
-      if (!canEditUser(actor, before)) return;
-      if (before.active !== u.active && !canDeactivateUser(actor, before)) return;
-    }
-    setUserChanges(prev => withChange(prev, u.id, u));
-  }, [users, session]);
-
-  const value: AppData = {
-    session, currentUser, users, events, clubs, units, registrations,
-    memberships: liveMemberships, follows, announcements: liveAnnouncements, liveClubIds,
-    localTaken, hostName, login, logout,
-    register, cancelRegistration, joinClub, leaveClub, followUnit, unfollowUnit,
-    saveEvent, cancelEvent, reviewRegistration, saveClub, deleteClub, saveAnnouncement, deleteAnnouncement, saveUser,
-    newId: makeId,
+    saveEvent: async event => toResult(await run('PUT', `/events/${event.id}`, event)),
+    cancelEvent: async eventId => toResult(await run('POST', `/events/${eventId}/cancel`)),
+    reviewRegistration: async (regId, status) => {
+      const r = await run('PATCH', `/registrations/${regId}`, { status });
+      return r.ok ? null : r.error ?? 'error';
+    },
+    saveClub: async club => toResult(await run('PUT', `/clubs/${club.id}`, club)),
+    deleteClub: async clubId => toResult(await run('DELETE', `/clubs/${clubId}`)),
+    saveAnnouncement: async a => toResult(await run('PUT', `/announcements/${a.id ?? makeId(`ann-${a.title}`)}`, a)),
+    deleteAnnouncement: async id => toResult(await run('DELETE', `/announcements/${id}`)),
+    saveUser: async (u, password) => toResult(await run('PUT', `/users/${u.id}`, { ...u, password })),
+    setUserActive: async (userId, active) => toResult(await run('PATCH', `/users/${userId}/active`, { active })),
+    reviewSignup: async (userId, decision) => toResult(await run('POST', `/users/${userId}/review`, { decision })),
   };
 
+  if (!value) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 text-center" style={{ backgroundColor: '#F7F7FC' }}>
+        {loadError ? (
+          <div role="alert" className="max-w-md">
+            <p className="font-bold text-lg" style={{ color: '#1F1D2B' }}>CampusConnect can't load</p>
+            <p className="text-sm mt-2" style={{ color: '#454242' }}>{loadError}</p>
+            <button onClick={refresh} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-primary">Try again</button>
+          </div>
+        ) : (
+          <p className="text-sm" style={{ color: '#454242' }} role="status">Loading CampusConnect…</p>
+        )}
+      </div>
+    );
+  }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

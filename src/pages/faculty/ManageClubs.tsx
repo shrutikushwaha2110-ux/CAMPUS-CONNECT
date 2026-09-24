@@ -3,27 +3,27 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAppData } from '../../state/AppData';
-import { memberCount } from '../../lib/memberships';
 import { eventsToCancelOnDelete } from '../../lib/clubs';
 import { canAddClub, canDeleteClub, canEditClub } from '../../lib/permissions';
 import { getToday } from '../../lib/date';
 import { Button, ButtonLink, Card, ConfirmDialog, EmptyState, PageHeader, Pill, useToast } from '../../components/ui';
 
 export function ManageClubs() {
-  const { session, clubs, units, events, memberships, users, deleteClub, logout } = useAppData();
+  const { session, clubs, units, events, clubMemberCount, users, deleteClub, logout } = useAppData();
   const toast = useToast();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const club = clubs.find(c => c.id === session?.clubId);
   const toCancel = club ? eventsToCancelOnDelete(club.id, events, getToday()) : [];
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!club || !canDeleteClub(session, club.id)) return;
-    deleteClub(club.id);
-    toast(`${club.name} deleted. ${toCancel.length} upcoming event(s) cancelled.`);
+    const r = await deleteClub(club.id);
     setDeleting(false);
+    if (!r.ok) { toast(r.error); return; }
+    toast(`${club.name} deleted. ${toCancel.length} upcoming event(s) cancelled.`);
     // Rule 20: the club's staff (including you, its head) lose access with it
-    logout();
+    await logout();
     navigate('/login');
   };
 
@@ -46,7 +46,7 @@ export function ManageClubs() {
                 <p className="font-bold text-lg text-text">{club.name}</p>
                 <p className="text-xs text-text-muted">{units.find(u => u.id === club.unitId)?.name} · {club.category}</p>
               </div>
-              <Pill tone="purple">{memberCount(club, memberships)} members</Pill>
+              <Pill tone="purple">{clubMemberCount(club)} members</Pill>
             </div>
             <p className="text-sm text-text-muted">{club.description}</p>
             <p className="text-xs text-text-muted">

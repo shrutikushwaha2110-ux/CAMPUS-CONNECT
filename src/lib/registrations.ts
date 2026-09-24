@@ -17,20 +17,23 @@ export function findRegistration(eventId: string, userId: string, regs: Registra
 export type RegisterBlock = 'login' | 'not-student' | 'already' | 'cancelled' | 'past' | 'full' | null;
 
 // Why a user can't register, or null if they can. Club membership is NOT required (rule 21).
+// `regs` must contain the user's own registrations; `taken` = site registrations holding a seat for this event
+// (the server counts them from the database; the browser gets the count, not other students' records).
 export function registerBlockReason(args: {
   event: AppEvent;
   role: string | null;
   userId: string | null;
   regs: Registration[];
+  taken: number;
   today: string;
 }): RegisterBlock {
-  const { event, role, userId, regs, today } = args;
+  const { event, role, userId, regs, taken, today } = args;
   if (!role || !userId) return 'login';
   if (role !== 'student') return 'not-student';
   if (findRegistration(event.id, userId, regs)) return 'already'; // rule 1 (also blocks re-applying after a rejection)
   if (event.status === 'cancelled') return 'cancelled'; // rule 6
   if (event.date < today) return 'past'; // rule 4
-  if (seatsLeft(event.seatsTotal, event.seatsTaken, localActiveCount(event.id, regs)) === 0) return 'full'; // rule 3
+  if (seatsLeft(event.seatsTotal, event.seatsTaken, taken) === 0) return 'full'; // rule 3
   return null;
 }
 

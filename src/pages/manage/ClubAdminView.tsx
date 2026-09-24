@@ -3,14 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useAppData } from '../../state/AppData';
 import { canViewClubAdmin, canEditClub } from '../../lib/permissions';
-import { memberCount } from '../../lib/memberships';
 import { getToday, formatDate } from '../../lib/date';
 import { NotAllowed } from '../../components/RequireRole';
 import { EventsTable } from '../../components/staff';
 import { ButtonLink, Card, EmptyState, PageHeader, Section, StatTile } from '../../components/ui';
 
 export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: string }) {
-  const { session, clubs, units, events, registrations, memberships, users } = useAppData();
+  const { session, clubs, units, events, registrations, memberships, users, clubMemberCount } = useAppData();
   const [showPast, setShowPast] = useState(false);
   const club = clubs.find(c => c.id === clubId);
   const today = getToday();
@@ -61,7 +60,7 @@ export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: st
       </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <StatTile label="Members" value={memberCount(club, memberships)} hint={`${members.length} joined on CampusConnect`} />
+        <StatTile label="Members" value={clubMemberCount(club)} hint={`${members.length} joined on CampusConnect`} />
         <StatTile label="Upcoming events" value={upcoming.filter(e => e.status === 'active').length} />
         <StatTile label="Registrations" value={clubRegs.filter(r => r.status !== 'rejected').length} hint="made on CampusConnect" />
         <StatTile label="Pending approvals" value={pending} />
@@ -75,7 +74,7 @@ export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: st
       </Section>
 
       <div>
-        <Section title={`Members (${memberCount(club, memberships)})`}>
+        <Section title={`Members (${clubMemberCount(club)})`}>
           <Card className="p-4">
             {members.length === 0 ? (
               <p className="text-sm text-text-muted">No students have joined through CampusConnect yet.</p>

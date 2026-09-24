@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useAppData } from '../state/AppData';
-import { authenticate } from '../lib/auth';
 import { ROLE_HOME, ROLE_LABELS, ROLE_SLUGS, type Role } from '../lib/constants';
 import logoImg from '../assets/logo2.png';
 
@@ -20,15 +19,15 @@ const ROLE_INFO: Record<Role, { icon: string; blurb: string; can: string[]; demo
   },
   faculty: {
     icon: '🔬',
-    blurb: 'Oversee every club, event, user and announcement on campus.',
-    can: ['Add, edit and delete clubs', 'Create, edit and cancel any event', 'Manage users and club-manager assignments', 'University-wide announcements'],
+    blurb: 'Head one club, look after university events, and manage student and club accounts.',
+    can: ['Manage the club you head + university (unit) events', 'Add new clubs', 'Approve sign-ups, manage students and your club managers', 'University-wide announcements'],
     demo: { email: 'admin@atria.edu', password: 'admin123' },
   },
 };
 
 const slugToRole = Object.fromEntries(Object.entries(ROLE_SLUGS).map(([r, s]) => [s, r])) as Record<string, Role>;
 
-function Shell({ children }: { children: React.ReactNode }) {
+export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: '#F7F7FC' }}>
       <Link to="/" className="flex items-center gap-3 mb-10">
@@ -37,7 +36,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       </Link>
       {children}
       <p className="mt-8 text-xs text-center" style={{ color: '#64748b' }}>
-        Unofficial student project. Clubs and events are sample data. Demo logins only, not real security.
+        Unofficial student project. Clubs and events are sample data. Accounts are stored in the CampusConnect database; passwords are hashed.
       </p>
     </div>
   );
@@ -52,7 +51,9 @@ export function Login() {
     <Shell>
       <div className="w-full max-w-3xl">
         <h1 className="font-bold text-2xl text-center mb-2" style={{ color: '#1F1D2B' }}>Log in to CampusConnect</h1>
-        <p className="text-sm text-center mb-8" style={{ color: '#454242' }}>Each role has its own login and its own dashboard.</p>
+        <p className="text-sm text-center mb-8" style={{ color: '#454242' }}>
+          Each role has its own login and its own dashboard. New here? <Link to="/signup" className="font-semibold" style={{ color: '#4637D2' }}>Create an account</Link>
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(Object.keys(ROLE_INFO) as Role[]).map(role => (
             <Link key={role} to={`/login/${ROLE_SLUGS[role]}${q}`} data-role={role}
@@ -76,19 +77,21 @@ export function RoleLogin() {
   const role = slug ? slugToRole[slug] : undefined;
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { users, liveClubIds, login, clubs } = useAppData();
+  const { loginWith, clubs } = useAppData();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   if (!role) return <Navigate to="/login" replace />;
   const info = ROLE_INFO[role];
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const result = authenticate(email, password, role, users, liveClubIds);
+    setBusy(true);
+    const result = await loginWith(email, password, role); // checked by the server against the hashed password
+    setBusy(false);
     if (!result.ok) { setError(result.error); return; }
-    login(result.session);
     const next = params.get('next');
     navigate(next && next.startsWith('/') && !next.startsWith('/login') ? next : ROLE_HOME[role], { replace: true });
   };
@@ -122,10 +125,14 @@ export function RoleLogin() {
               className="w-full px-4 py-3 rounded-xl border border-border outline-none text-sm focus:border-primary" />
           </div>
           {error && <p role="alert" className="text-sm font-medium px-4 py-3 rounded-xl" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>{error}</p>}
-          <button type="submit" className="w-full py-3 rounded-xl font-semibold text-sm text-white bg-primary hover:bg-primary-dark">
-            Log in as {ROLE_LABELS[role]}
+          <button type="submit" disabled={busy} className="w-full py-3 rounded-xl font-semibold text-sm text-white bg-primary hover:bg-primary-dark disabled:opacity-60">
+            {busy ? 'Logging in…' : `Log in as ${ROLE_LABELS[role]}`}
           </button>
         </form>
+
+        <p className="text-sm text-center mt-5" style={{ color: '#454242' }}>
+          No account yet? <Link to={`/signup?role=${role}`} className="font-semibold" style={{ color: '#4637D2' }} data-testid="signup-link">Sign up</Link>
+        </p>
 
         <div className="mt-6 p-4 rounded-xl text-xs" style={{ backgroundColor: '#EEECFB', color: '#2B2093' }}>
           <p className="font-semibold mb-1">Demo account</p>

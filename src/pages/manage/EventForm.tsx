@@ -46,7 +46,7 @@ export function EventForm() {
   // Rule 15: seats can't drop below seats already taken (baseline + site registrations)
   const takenNow = existing ? seatsTakenNow(existing.seatsTaken, localTaken(existing.id)) : 0;
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     const errs = validateEvent({ ...form, seatsTotal: Number(form.seatsTotal) }, takenNow);
     const [hostType, hostId] = form.host.split(':');
@@ -68,7 +68,8 @@ export function EventForm() {
       hostId,
       requiresApproval: form.requiresApproval,
     };
-    saveEvent(event);
+    const r = await saveEvent(event);
+    if (!r.ok) { setErrors(r.errors ?? {}); toast(r.error); return; }
     toast(existing ? `Saved changes to ${event.title}` : `${event.title} created. It's now on the Events page.`);
     navigate('/events');
   };

@@ -28,14 +28,15 @@ export function AnnouncementForm() {
 
   const back = '/events';
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     const errs = validateAnnouncement(form);
     const clubId = isFaculty ? (form.scope || null) : session?.clubId ?? null;
     if (!canManageAnnouncement(session, { clubId })) errs.scope = 'You can only post to your own club';
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    saveAnnouncement({ id: existing?.id, title: form.title.trim(), body: form.body.trim(), clubId });
+    const r = await saveAnnouncement({ id: existing?.id, title: form.title.trim(), body: form.body.trim(), clubId });
+    if (!r.ok) { setErrors(r.errors ?? {}); toast(r.error); return; }
     toast(existing ? 'Announcement updated' : 'Announcement posted');
     navigate(back);
   };

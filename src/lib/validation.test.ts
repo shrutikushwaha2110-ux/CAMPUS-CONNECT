@@ -1,7 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import clubs from '../data/clubs.json';
 import users from '../data/users.json';
-import { validateEvent, validateClub, validateAnnouncement, validateUser, type EventInput } from './validation';
+import { validateEvent, validateClub, validateAnnouncement, validateUser, validateSignup, type EventInput } from './validation';
+
+describe('validateSignup (SU1)', () => {
+  const live = new Set(clubs.map(c => c.id));
+  const open = new Set(['sports-club']);
+  const ok = { name: 'Neha Rao', email: 'neha@student.atria.edu', password: 'campus2026', confirm: 'campus2026', role: 'student' };
+  it('accepts a valid student sign-up', () => {
+    expect(validateSignup(ok, users, live, open)).toEqual({});
+  });
+  it('rejects an email that already has an account (case-insensitive)', () => {
+    expect(validateSignup({ ...ok, email: 'SHRUTI@student.atria.edu' }, users, live, open)).toHaveProperty('email');
+  });
+  it('needs 8+ characters with letters and numbers, typed twice', () => {
+    expect(validateSignup({ ...ok, password: 'short1', confirm: 'short1' }, users, live, open)).toHaveProperty('password');
+    expect(validateSignup({ ...ok, password: 'onlyletters', confirm: 'onlyletters' }, users, live, open)).toHaveProperty('password');
+    expect(validateSignup({ ...ok, confirm: 'different1' }, users, live, open)).toHaveProperty('confirm');
+  });
+  it('club managers must pick an existing club', () => {
+    expect(validateSignup({ ...ok, role: 'clubManager' }, users, live, open)).toHaveProperty('clubId');
+    expect(validateSignup({ ...ok, role: 'clubManager', clubId: 'dance-club' }, users, live, open)).toEqual({});
+  });
+  it('faculty may only request a club without a head', () => {
+    expect(validateSignup({ ...ok, role: 'faculty', clubId: 'dance-club' }, users, live, open)).toHaveProperty('clubId');
+    expect(validateSignup({ ...ok, role: 'faculty', clubId: 'sports-club' }, users, live, open)).toEqual({});
+  });
+});
 
 describe('validateAnnouncement (M5)', () => {
   it('accepts title + message', () => {

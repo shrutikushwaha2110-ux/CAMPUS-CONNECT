@@ -7,6 +7,7 @@ import { Clubs } from '../pages/Clubs';
 import { Units } from '../pages/Units';
 import { Dashboard } from '../pages/Dashboard';
 import { Login, RoleLogin } from '../pages/Login';
+import { Signup } from '../pages/Signup';
 import { NotFound } from '../pages/NotFound';
 import { ManageHome } from '../pages/manage/ManageHome';
 import { EventForm } from '../pages/manage/EventForm';
@@ -31,6 +32,7 @@ const STAFF: Role[] = ['clubManager', 'faculty'];
 export const router = createHashRouter([
   { path: '/login', Component: Login },
   { path: '/login/:role', Component: RoleLogin },
+  { path: '/signup', Component: Signup },
   {
     path: '/',
     Component: Root,

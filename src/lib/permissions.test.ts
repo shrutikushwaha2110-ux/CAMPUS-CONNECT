@@ -3,7 +3,7 @@ import clubs from '../data/clubs.json';
 import units from '../data/units.json';
 import {
   canManageEvent, canViewClubAdmin, canEditClub, canDeleteClub, canAddClub, canManageUsers,
-  canManageAnnouncement, canEditUser, canDeactivateUser, assignableClubs, allowedHosts,
+  canManageAnnouncement, canEditUser, canDeactivateUser, assignableClubs, allowedHosts, canReviewSignup,
 } from './permissions';
 
 const danceMgr = { role: 'clubManager', clubId: 'dance-club', userId: 'mgr-dance' };
@@ -92,6 +92,25 @@ describe('user management (rule 26, U1–U3)', () => {
     const ids = assignableClubs(danceHead, 'faculty', clubs, users).map(c => c.id);
     expect(ids).not.toContain('dance-club');
     expect(ids).toContain('music-club');
+  });
+});
+
+describe('reviewing sign-ups (SU2)', () => {
+  const heads = [
+    { id: 'fac-admin', role: 'faculty', clubId: 'dance-club', active: true, status: 'approved' },
+    { id: 'fac-music', role: 'faculty', clubId: 'music-club', active: true, status: 'approved' },
+  ];
+  it('a club-manager request is reviewed by that club’s faculty head only', () => {
+    expect(canReviewSignup(danceHead, { role: 'clubManager', clubId: 'dance-club', status: 'pending' }, heads)).toBe(true);
+    expect(canReviewSignup(danceHead, { role: 'clubManager', clubId: 'music-club', status: 'pending' }, heads)).toBe(false);
+  });
+  it('a faculty request can be reviewed by any faculty while the club has no head', () => {
+    expect(canReviewSignup(danceHead, { role: 'faculty', clubId: 'sports-club', status: 'pending' }, heads)).toBe(true);
+    expect(canReviewSignup(danceHead, { role: 'faculty', clubId: 'music-club', status: 'pending' }, heads)).toBe(false);
+  });
+  it('only pending requests, only by faculty', () => {
+    expect(canReviewSignup(danceHead, { role: 'clubManager', clubId: 'dance-club', status: 'approved' }, heads)).toBe(false);
+    expect(canReviewSignup(danceMgr, { role: 'clubManager', clubId: 'dance-club', status: 'pending' }, heads)).toBe(false);
   });
 });
 

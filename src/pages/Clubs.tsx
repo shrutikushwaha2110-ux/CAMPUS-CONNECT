@@ -8,12 +8,12 @@ import type { ClubCategory } from '../lib/constants';
 import { FilterChip } from '../components/FilterChip';
 import { StudentRules } from '../components/StudentRules';
 import { ConfirmDialog, useToast } from '../components/ui';
-import { memberCount, joinBlockReason } from '../lib/memberships';
+import { joinBlockReason } from '../lib/memberships';
 import { upcomingSorted } from '../lib/eventFilter';
 import { canViewClubAdmin } from '../lib/permissions';
 
 export function Clubs() {
-  const { clubs, units, events, memberships, session, liveClubIds } = useAppData();
+  const { clubs, units, events, memberships, session, liveClubIds, clubMemberCount } = useAppData();
   const { hasJoined, joinedClubs, joinClub, leaveClub } = useMemberships();
   const toast = useToast();
   const navigate = useNavigate();
@@ -34,18 +34,18 @@ export function Clubs() {
       return matchesCat && matchesSearch;
     }), [clubs, activeCategory, activeSearch]);
 
-  const handleJoin = (id: string, name: string) => {
+  const handleJoin = async (id: string, name: string) => {
     const block = joinBlockReason({ role: session?.role ?? null, userId: session?.userId ?? null, clubId: id, memberships, liveClubIds });
     if (block === 'login') { navigate(`/login/student?next=${encodeURIComponent('/clubs')}`); return; }
     if (block === 'limit') { toast(`You can join a maximum of ${MAX_CLUBS_PER_STUDENT} clubs. Leave one first.`); return; }
     if (block) return;
-    joinClub(id);
-    toast(`You joined ${name}`);
+    const err = await joinClub(id);
+    toast(err ? `Could not join ${name} (${err}).` : `You joined ${name}`);
   };
 
-  const confirmLeave = () => {
+  const confirmLeave = async () => {
     if (!leaving) return;
-    leaveClub(leaving.id);
+    await leaveClub(leaving.id);
     toast(`You left ${leaving.name}`);
     setLeaving(null);
   };
@@ -77,7 +77,7 @@ export function Clubs() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filtered.map(club => {
           const joined = hasJoined(club.id);
-          const count = memberCount(club, memberships);
+          const count = clubMemberCount(club);
           const unitName = units.find(u => u.id === club.unitId)?.name ?? club.unitId;
           const clubEvents = upcoming.filter(e => e.hostType === 'club' && e.hostId === club.id);
           const joinDisabled = !joined && atLimit;

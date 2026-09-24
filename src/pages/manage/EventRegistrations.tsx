@@ -29,8 +29,8 @@ export function EventRegistrations() {
   const earlierOthers = unnamedEarlierSeats(event.seatsTaken, event.registrations.length);
   const back = session?.role === 'faculty' ? '/events' : '/manage';
 
-  const review = (regId: string, status: RegStatus, name: string) => {
-    const err = reviewRegistration(regId, status);
+  const review = async (regId: string, status: RegStatus, name: string) => {
+    const err = await reviewRegistration(regId, status);
     if (err === 'full') { toast('No seats left, so this registration cannot be accepted.'); return; }
     if (err) return;
     toast(status === 'confirmed' ? `Accepted ${name}` : `Rejected ${name}. Their seat is free again.`);

@@ -5,7 +5,7 @@ A multi-page React site with **three roles, each with its own login and dashboar
 - **Club Managers** run exactly one club. They have only two sections: **Manage club** and **Events** (their hosted events + announcements).
 - **Faculty** each **head one club**. They manage that club + university (unit) events, add new clubs, and manage student / own-club-manager accounts, but **never another faculty member's account**.
 
-It's an unofficial student project, and all clubs, events and accounts are sample data.
+It's an unofficial student project. Clubs and events are sample data. **Accounts and everything people change are stored in a SQLite database** behind a small Node/Express API, and anyone can sign up.
 
 **`SPEC.md` is the source of truth** for roles, pages, requirement IDs (A1, F9a, M3, C4, U1, N4 …), data and rules (§7). If the code and SPEC.md disagree, or a request isn't in SPEC.md, say so and ask before building. **SPEC.md and `src/data/*.json` are locked by a hook.** Never try to work around it; ask the team to approve the change (see Hooks).
 
@@ -15,16 +15,19 @@ It's an unofficial student project, and all clubs, events and accounts are sampl
 - React Router v7, **`createHashRouter`** in `src/app/routes.tsx`. URLs are `/#/events/…`. Don't switch to a browser router, because deep links would then need host rewrites.
 - Tailwind CSS v4. Figma colour tokens live in `src/index.css` (`bg-primary` = #4637D2, `bg-primary-dark`, `bg-primary-tint`, `text-text`, `text-text-muted`, `border-border`, night #1C1750).
 - Three.js only in `src/components/3d/HeroScene.tsx`, lazy-loaded by Home.
-- No backend. Seed data is `src/data/*.json` plus localStorage.
-- Tests: Vitest (`src/lib/*.test.ts`), end-to-end with puppeteer-core in `tests/e2e/run.mjs`, and hook tests in `.claude/hooks/test-hooks.mjs`.
+- **Backend:** Express 5 API in `server/` + SQLite via Node's built-in `node:sqlite` (file `server/data/campusconnect.db`, git-ignored, seeded from `src/data/*.json`). Passwords: salted scrypt (`server/passwords.ts`). Sessions: `cc_session` httpOnly cookie, SHA-256 of the token in the `sessions` table.
+- In dev the API is mounted inside Vite (plugin in `vite.config.ts`), so `npm run dev` is the only process. In production `npm start` (tsx) serves the API + `dist/`.
+- Tests: Vitest (`src/lib/*.test.ts` rules + `server/api.test.ts` real API + in-memory DB), end-to-end with puppeteer-core in `tests/e2e/run.mjs` (real server, temporary DB), and hook tests in `.claude/hooks/test-hooks.mjs`.
 
 ## Commands
 
 | Command | What it does | When |
 |---|---|---|
-| `npm run dev` | Vite dev server (5173; the preview pane uses 5180) | while building |
-| `npm test` | 108 Vitest tests for every rule in `src/lib` | after any logic change (a hook runs it automatically) |
-| `npm run test:e2e` | Builds, serves `dist/`, drives Chrome through 36 role scenarios, writes `docs/E2E_RESULTS.md` + screenshots | before any PR / demo |
+| `npm run dev` | Vite dev server **+ API + database** (5173; the preview pane uses 5180) | while building |
+| `npm start` | Production server: API + built `dist/` on `PORT` (default 3000) | after `npm run build` / on the host |
+| `npm run db:reset` | Wipe the database and re-seed the demo data (all sign-ups lost) | before a demo |
+| `npm test` | 127 Vitest tests: every rule in `src/lib` + 14 API tests against a real in-memory SQLite DB | after any logic change (a hook runs it automatically) |
+| `npm run test:e2e` | Builds, starts the real server with a temporary DB, drives Chrome through 40 scenarios (incl. sign-up + approval), writes `docs/E2E_RESULTS.md` + screenshots | before any PR / demo |
 | `npm run test:hooks` | 9 test cases proving the hooks fire on the right events | after touching `.claude/hooks/` |
 | `npm run build` | `tsc --noEmit` + production build → `dist/` | must pass before any PR |
 
@@ -33,10 +36,10 @@ It's an unofficial student project, and all clubs, events and accounts are sampl
 ```
 src/
   app/routes.tsx       every route; protected ones wrapped in <RequireRole roles={…}>
-  state/AppData.tsx    THE store: seed JSON + localStorage merged, session, and every action (register, joinClub, saveEvent, deleteClub…)
+  state/AppData.tsx    browser store: loads /api/state, every action calls the API then reloads (state/api.ts = fetch wrapper)
   hooks/               thin wrappers over the store: useEvents, useClubs, useRegistrations, useMemberships, useSession
-  lib/                 pure rules, no React (each has *.test.ts):
-                         seats · registrations · memberships · permissions · validation · auth · clubs · eventFilter · merge · storage · date · constants
+  lib/                 pure rules, no React, used by BOTH browser and server (each has *.test.ts):
+                         seats · registrations · memberships · permissions · validation · auth · clubs · eventFilter · ids · date · constants
   components/          Navbar (role-aware), Footer, EventCard, SeatsBadge, … (Figma-derived)
                        ui.tsx (Button, Card, Field, ConfirmDialog, Toast…), staff.tsx (EventsTable, SeatsBar, AnnouncementsList),
                        RequireRole.tsx (route guard + "Not available for your role"), StaffRoute.tsx (HideFor), StudentRules.tsx
@@ -44,7 +47,13 @@ src/
   pages/               public + student: Home, Events, EventDetails, Clubs, Units, Dashboard (student), Login (+ RoleLogin), NotFound, Root
   pages/manage/        Club Manager (+ Faculty via shared routes): ManageHome, ClubAdminView, EventForm, EventRegistrations, AnnouncementForm
   pages/faculty/       Faculty: FacultyHome (admin dashboard), ManageClubs ("My club"), ClubForm, FacultyClubDetail, ManageUsers, FacultyAnnouncements
-  data/                events, clubs, units, users, announcements (.json) + types.ts
+  data/                SEED data for the database (events, clubs, units, users, announcements .json) + types.ts
+server/
+  app.ts               Express API: auth (signup/login/logout), /state, every write; re-checks src/lib rules
+  db.ts                SQLite schema, seeding, row mappers, loadAll()
+  passwords.ts         scrypt hashing, session tokens
+  index.ts / reset.ts  production entry / `npm run db:reset`
+  api.test.ts          API tests (real HTTP, in-memory DB)
 tests/e2e/run.mjs      browser test suite
 docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVERABLES.md, screenshots/, figma/
 .claude/               settings.json (hooks), hooks/, agents/, skills/, launch.json
@@ -53,11 +62,13 @@ docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVE
 ### The rules of the layers (don't break these)
 
 1. **Every rule is a pure function in `src/lib/`, with a test.** Pages call `seatsLeft`, `registerBlockReason`, `joinBlockReason`, `canManageEvent`, `validateEvent` and so on. Never re-implement a rule inline (hard-coded `5`, `role === 'faculty'` checks scattered in JSX, seat arithmetic). The Explore subagent found exactly this in `FacultyHome.tsx` and three other places; it's fixed now, so keep it that way.
-2. **Only `state/AppData.tsx` touches storage and seed JSON.** Pages never import `lib/storage` or write to localStorage. (Some Figma-derived pages still import `units.json` read-only for display; that's fine.)
-3. **Actions validate again inside the store** (`register`, `joinClub`, `reviewRegistration`), so a UI bug can't break a rule.
-4. **Components only display.** Props in, callbacks out.
-5. **Dates** come from `getToday()` (`YYYY-MM-DD`). Lib functions take an optional `today`, and tests use `'2026-11-01'`.
-6. **Constants** (categories, roles, `MAX_CLUBS_PER_STUDENT = 2`, `ALMOST_FULL_THRESHOLD = 5`, `ROLE_HOME`, `ROLE_SLUGS`) live in `lib/constants.ts`.
+2. **The database is the only source of truth.** Pages never use localStorage. Only `server/` touches SQLite; the browser only talks to `/api` through `state/AppData.tsx`. (Some Figma-derived pages still import `units.json` read-only for display; that's fine.)
+3. **The server re-checks every rule** with the same `src/lib` functions (permissions, validation, seat and club limits), because anything in the browser can be bypassed. Add a new write? Add its check in `server/app.ts` **and** an API test.
+4. **Never send secrets to the browser.** `visibleState()` in `server/app.ts` decides what each role receives. Password hashes never leave the server, and students only get their own records.
+5. **Credentials:** hash with `hashPassword()`, compare with `verifyPassword()` (constant-time). Never log or store plain passwords.
+6. **Components only display.** Props in, callbacks out.
+7. **Dates** come from `getToday()` (`YYYY-MM-DD`). Lib functions take an optional `today`, and tests use `'2026-11-01'`.
+8. **Constants** (categories, roles, `MAX_CLUBS_PER_STUDENT = 2`, `ALMOST_FULL_THRESHOLD = 5`, `ROLE_HOME`, `ROLE_SLUGS`) live in `lib/constants.ts`.
 
 ## Roles & access (SPEC §2, rules 12, 17, 18, 25–27)
 
@@ -74,7 +85,8 @@ docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVE
 - `HideFor` (`components/StaffRoute.tsx`) does the role-specific routing: Club Managers are redirected from `/`, `/clubs`, `/units` to `/manage`; Faculty from `/` and `/units` to `/faculty`.
 - Staff opening another club's event page (`/events/:id`) get "Not available". Students and visitors see every event.
 
-- The session is `{ userId, role, clubId? }` in `campusconnect.session`, and it's **re-validated on every load** (`validateSession`): a deactivated user, a changed role or a deleted club ends it.
+- Accounts: `/signup` creates them (Students active at once; Club Manager / Faculty **pending** until approved in Users → Sign-up requests, `canReviewSignup`). Login is `POST /api/auth/login` (password check on the server, then `loginDecision`).
+- The session is `{ userId, role, clubId? }`, built by the server from the `cc_session` cookie and **re-validated on every request** (`validateSession`): a deactivated / declined user, a changed role or a deleted club ends it.
 - Access is enforced **twice**:
   1. `RequireRole` on the route (logged out → role login with `?next=`; wrong role → "Not available for your role").
   2. Inside pages that show one club's or one event's private data (`canViewClubAdmin`, `canManageEvent`, `canEditClub`, `canManageAnnouncement`, `canEditUser`).
@@ -83,7 +95,7 @@ docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVE
   The **store actions** (`saveEvent`, `cancelEvent`, `reviewRegistration`, `saveClub`, `deleteClub`, `saveAnnouncement`, `saveUser`) re-check the same permission functions, so a UI bug can't bypass them.
 - Faculty reuse the `/manage/events/*` and `/manage/announcements/*` pages, limited to their own club + unit events.
 - A deleted club invalidates the sessions of its manager **and** its faculty head (`validateSession`).
-- Passwords in `users.json` are **demo values, not security**. Never add real credentials or tokens anywhere.
+- Passwords in `src/data/users.json` are the **seed demo passwords** (hashed on the way into the DB). Real users' passwords exist only as hashes in the database. Never commit the `.db` file, real credentials or tokens.
 
 ## Figma-generated code
 

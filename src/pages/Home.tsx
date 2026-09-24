@@ -12,7 +12,6 @@ import { SeatsBadge } from '../components/SeatsBadge';
 import { CategoryBadge } from '../components/CategoryBadge';
 import { seatsLeft, seatStatus } from '../lib/seats';
 import { formatDate } from '../lib/date';
-import { memberCount } from '../lib/memberships';
 import { useAppData } from '../state/AppData';
 
 // Three.js is ~600 KB; load it after the page so search and cards are usable first
@@ -24,7 +23,7 @@ export function Home() {
   const { upcomingEvents, localTaken, hostName } = useEvents();
   const { clubs } = useClubs();
   const { myRegistration } = useRegistrations();
-  const { memberships } = useAppData();
+  const { clubMemberCount } = useAppData();
 
   const featuredEvent = upcomingEvents.find(e => e.id === 'annual-dance-fest') ?? upcomingEvents[0];
   const upcoming3 = upcomingEvents.filter(e => e.id !== featuredEvent?.id).slice(0, 3);
@@ -127,7 +126,7 @@ export function Home() {
               </div>
               <div>
                 <p className="font-semibold text-sm" style={{ color: '#1F1D2B' }}>{c.name}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#454242' }}>{memberCount(c, memberships)} members</p>
+                <p className="text-xs mt-0.5" style={{ color: '#454242' }}>{clubMemberCount(c)} members</p>
               </div>
             </Link>
           ))}

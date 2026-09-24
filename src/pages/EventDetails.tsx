@@ -46,22 +46,22 @@ export function EventDetails() {
   const left = seatsLeft(event.seatsTotal, event.seatsTaken, taken);
   const status = seatStatus(event.seatsTotal, event.seatsTaken, taken, event.status);
   const isCancelled = event.status === 'cancelled';
-  const block = registerBlockReason({ event, role: session?.role ?? null, userId: session?.userId ?? null, regs: registrations, today: getToday() });
+  const block = registerBlockReason({ event, role: session?.role ?? null, userId: session?.userId ?? null, regs: registrations, taken, today: getToday() });
   const host = hostName(event);
   const hostLink = event.hostType === 'club' ? '/clubs' : '/units';
   const canManage = canManageEvent(session, event);
   const loginNext = `/login/student?next=${encodeURIComponent(location.pathname)}`;
 
-  const handleRegister = () => {
-    const result = register(event.id);
-    if (typeof result === 'string') return;
+  const handleRegister = async () => {
+    const result = await register(event.id);
+    if (typeof result === 'string') { toast(`Could not register (${result}).`); return; }
     toast(result.status === 'pending'
       ? `Request sent to ${host}. Waiting for approval.`
       : `You're registered for ${event.title}`);
   };
 
-  const handleUnregister = () => {
-    unregister(event.id);
+  const handleUnregister = async () => {
+    await unregister(event.id);
     setConfirmCancel(false);
     toast('Registration cancelled');
   };

@@ -72,6 +72,38 @@ export function validateUser(
   return errors;
 }
 
+export interface SignupInput {
+  name: string;
+  email: string;
+  password: string;
+  confirm: string;
+  role: string;
+  clubId?: string;
+}
+
+// SU1: public sign-up. Stronger password than faculty-created temporary ones (8+ chars, letters + numbers).
+// `openHeadClubs` = clubs with no approved faculty head (the only ones a Faculty sign-up may request).
+export function validateSignup(
+  input: SignupInput,
+  existing: Array<{ email: string }>,
+  liveClubIds: Set<string>,
+  openHeadClubs: Set<string>,
+): Errors {
+  const errors: Errors = {};
+  const email = input.email.trim().toLowerCase();
+  if (!input.name.trim()) errors.name = 'Name is required';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email';
+  else if (existing.some(u => u.email.toLowerCase() === email)) errors.email = 'An account with this email already exists. Log in instead.';
+  if (input.password.length < 8 || !/[A-Za-z]/.test(input.password) || !/\d/.test(input.password)) {
+    errors.password = 'Use at least 8 characters with letters and numbers';
+  }
+  if (input.confirm !== input.password) errors.confirm = 'Passwords do not match';
+  if (!['student', 'clubManager', 'faculty'].includes(input.role)) errors.role = 'Pick a role';
+  if (input.role === 'clubManager' && (!input.clubId || !liveClubIds.has(input.clubId))) errors.clubId = 'Pick the club you manage';
+  if (input.role === 'faculty' && (!input.clubId || !openHeadClubs.has(input.clubId))) errors.clubId = 'Pick a club that has no faculty head yet';
+  return errors;
+}
+
 export interface ClubInput {
   id?: string; // set when editing, so the club doesn't clash with its own name
   name: string;

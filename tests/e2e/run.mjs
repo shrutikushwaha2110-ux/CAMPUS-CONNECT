@@ -1,9 +1,11 @@
 // End-to-end tests: drive the REAL site in Chrome, one scenario per requirement, and record what actually happened.
-// Run: npm run test:e2e   (builds, serves dist/ with vite preview; uses your installed Chrome/Edge via puppeteer-core)
+// Run: npm run test:e2e   (builds, starts the REAL server with a fresh temporary SQLite database; uses your installed Chrome/Edge)
 // Output: tests/e2e/results.json, docs/E2E_RESULTS.md, screenshots in docs/screenshots/site/
-import { build, preview } from 'vite';
+import { build } from 'vite';
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import puppeteer from 'puppeteer-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,9 +36,11 @@ async function go(hash) {
 }
 async function fresh() {
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => fetch('/api/test/reset', { method: 'POST' })); // re-seed the test database
+  await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
   await page.reload({ waitUntil: 'networkidle0' });
 }
+const apiState = () => page.evaluate(() => fetch('/api/state').then(r => r.json()));
 const text = sel => page.$eval(sel, el => el.innerText).catch(() => '');
 const bodyText = () => page.evaluate(() => document.body.innerText);
 const hash = () => page.evaluate(() => location.hash);
@@ -60,7 +64,7 @@ async function click(text, scope = 'body') {
 async function confirmDialog(label) { await click(label, '[role=dialog]'); }
 async function login(slug, email, password) {
   await go(`#/logout-placeholder`);
-  await page.evaluate(() => localStorage.removeItem('campusconnect.session'));
+  await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
   await page.reload({ waitUntil: 'networkidle0' });
   await go(`#/login/${slug}`);
   await type('#email', email);
@@ -68,7 +72,7 @@ async function login(slug, email, password) {
   // DOM click, like every other helper here: Puppeteer's synthetic mouse click was sometimes lost right after
   // page.reload() (the button was on top and a DOM click on it worked), which made logins flaky.
   await page.$eval('form button[type=submit]', b => b.click());
-  await sleep(600);
+  await sleep(900); // scrypt password check on the server
 }
 // Like login(), but the test fails right here (with the page's message) if the login didn't work
 async function mustLogin(slug, email, password) {
@@ -109,7 +113,16 @@ async function test(id, name, input, expected, fn) {
 // discovers new dependencies mid-test, which wiped half-typed forms and made logins flaky.
 console.log('Building production bundle…');
 await build({ root: ROOT, logLevel: 'error' });
-const server = await preview({ root: ROOT, preview: { port: PORT, strictPort: true }, logLevel: 'error' });
+// The real production server (API + dist/) with a throw-away database; CC_TEST_RESET enables /api/test/reset
+const DB_PATH = join(tmpdir(), `campusconnect-e2e-${Date.now()}.db`);
+const server = spawn(process.execPath, [join(ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs'), join(ROOT, 'server', 'index.ts')], {
+  cwd: ROOT, env: { ...process.env, PORT: String(PORT), DB_PATH, CC_TEST_RESET: '1', NODE_NO_WARNINGS: '1' }, stdio: ['ignore', 'pipe', 'pipe'],
+});
+await new Promise((resolve, reject) => {
+  const t = setTimeout(() => reject(new Error('server did not start')), 30000);
+  server.stdout.on('data', d => { if (String(d).includes('running on')) { clearTimeout(t); resolve(); } });
+  server.stderr.on('data', d => process.stderr.write(d));
+});
 const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 860, deviceScaleFactor: 1 });
@@ -160,12 +173,75 @@ try {
   });
 
   await test('R17', 'Logged-out visitor is sent to login for a dashboard', 'Log out, open /dashboard', 'Redirect to /login/student?next=…', async () => {
-    await page.evaluate(() => localStorage.removeItem('campusconnect.session'));
+    await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
     await page.reload({ waitUntil: 'networkidle0' });
     await go('#/dashboard');
     const h = await hash();
     expect(h.startsWith('#/login/student'), h);
     return h;
+  });
+
+  // ---------- database: sign up, log in later ----------
+  await fresh();
+  await test('SU1', 'Sign up as a new student, log out, log in again', 'Sign up "Neha Rao" neha@student.atria.edu / campus2026; log out; log in on /login/student', 'Lands on dashboard after sign-up and again after the later login', async () => {
+    await go('#/login/student');
+    await click('Sign up');
+    await type('#su-name', 'Neha Rao'); await type('#su-email', 'neha@student.atria.edu');
+    await type('#su-password', 'campus2026'); await type('#su-confirm', 'campus2026');
+    await shot('18-signup-form');
+    await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(1200);
+    const afterSignup = `${await hash()} "${await text('main h1')}"`;
+    expect(afterSignup.startsWith('#/dashboard') && afterSignup.includes('Hi, Neha'), afterSignup);
+    await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
+    await page.reload({ waitUntil: 'networkidle0' });
+    await mustLogin('student', 'neha@student.atria.edu', 'campus2026');
+    const afterLogin = `${await hash()} "${await text('main h1')}"`;
+    expect(afterLogin.startsWith('#/dashboard') && afterLogin.includes('Hi, Neha'), afterLogin);
+    return `After sign-up: ${afterSignup}; after logging out and back in: ${afterLogin}`;
+  });
+
+  await test('SU1', 'Sign-up form rejects bad input', 'Existing email, short password, mismatched confirm', 'Field errors, no account created', async () => {
+    await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
+    await go('#/signup');
+    await type('#su-name', 'Copy Cat'); await type('#su-email', 'shruti@student.atria.edu');
+    await type('#su-password', 'abc'); await type('#su-confirm', 'abd');
+    await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(400);
+    const local = await page.$$eval('[data-error]', els => els.map(e => `${e.dataset.error}: ${e.innerText}`));
+    await type('#su-password', 'campus2026'); await type('#su-confirm', 'campus2026');
+    await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(1000);
+    const server = await text('[data-error="su-email"]');
+    expect(local.some(e => e.startsWith('su-password')) && local.some(e => e.startsWith('su-confirm')) && /already exists/.test(server), `${local} | ${server}`);
+    return `Browser check: ${local.join('; ')} · Server check: "${server}"`;
+  });
+
+  await test('SU2', 'Club Manager sign-up waits for the faculty head’s approval', 'Sign up "Kabir" as Dance Club manager; try to log in; Dance head approves in Users; log in again', 'Pending message, login refused, then works after approval', async () => {
+    await go('#/signup');
+    await page.evaluate(() => [...document.querySelectorAll('[data-testid=signup-form] label')].find(l => l.innerText.trim() === 'Club Manager').click());
+    await sleep(200);
+    await type('#su-name', 'Kabir Sen'); await type('#su-email', 'kabir@atria.edu');
+    await type('#su-club', 'dance-club'); await type('#su-password', 'campus2026'); await type('#su-confirm', 'campus2026');
+    await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(1200);
+    const pendingPage = await text('[data-testid=signup-pending]');
+    await login('club-manager', 'kabir@atria.edu', 'campus2026');
+    const refused = await text('[role=alert]');
+    await asMusicHead();
+    await go('#/faculty/users');
+    const musicSees = await page.$$eval('[data-pending="kabir@atria.edu"] button', bs => bs.map(b => b.innerText));
+    await asFaculty();
+    await go('#/faculty/users');
+    await shot('19-faculty-signup-requests');
+    await page.evaluate(() => [...document.querySelectorAll('[data-pending="kabir@atria.edu"] button')].find(b => b.innerText === 'Approve').click());
+    await sleep(800);
+    await mustLogin('club-manager', 'kabir@atria.edu', 'campus2026');
+    const title = await text('main h1');
+    expect(/waiting for approval/.test(pendingPage) && /waiting for approval/.test(refused) && musicSees.length === 0 && title === 'Dance Club', `${pendingPage} | ${refused} | music=${musicSees} | ${title}`);
+    return `"Request sent … waiting for approval"; login refused ("${refused}"); Music head sees no Approve button; Dance head approved → Kabir lands on "${title}"`;
+  });
+
+  await test('SU4', 'Passwords never reach the browser', 'Faculty loads /api/state (all users)', 'No password or hash in the response', async () => {
+    const st = JSON.stringify(await apiState());
+    expect(st.includes('kabir@atria.edu') && !/scrypt|password|campus2026|demo123/.test(st), 'secret found in state');
+    return `State has ${JSON.parse(st).users.length} users, no password fields or hashes`;
   });
 
   // ---------- student ----------
@@ -201,7 +277,7 @@ try {
     const rules = await text('[data-testid=student-rules]');
     expect(sportsBtn.t === 'Limit reached' && sportsBtn.d, JSON.stringify(sportsBtn));
     expect(rules.includes("joined 2 of 2"), rules);
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('campusconnect.memberships')).length);
+    const stored = (await apiState()).memberships.length;
     expect(stored === 2, `stored memberships ${stored}`);
     await shot('03-student-clubs-limit');
     return `Sports Club button "${sportsBtn.t}" (disabled); banner "You've joined 2 of 2"; 2 memberships stored`;
@@ -336,7 +412,7 @@ try {
     await type('#time', '18:00'); await type('#venue', 'Studio A'); await type('#description', 'x'); await type('#seats', '0');
     await page.$eval('[data-testid=event-form] button[type=submit]', b => b.click()); await sleep(300);
     const errs = await page.$$eval('[data-error]', els => els.map(e => `${e.dataset.error}: ${e.innerText}`));
-    const stored = await page.evaluate(() => JSON.stringify(localStorage.getItem('campusconnect.eventChanges') ?? ''));
+    const stored = JSON.stringify((await apiState()).events.map(e => e.title));
     expect(errs.some(e => e.startsWith('date')) && errs.some(e => e.startsWith('seats')) && !stored.includes('Bad Event'), errs.join('; '));
     await shot('08-event-form-errors');
     return errs.join('; ');
@@ -566,7 +642,7 @@ try {
     await page.setViewport({ width: 375, height: 812, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     const bad = [];
     const check = async h => { await go(h); await sleep(250); const w = await page.evaluate(() => document.documentElement.scrollWidth); if (w > 375) bad.push(`${h}=${w}`); };
-    for (const h of ['#/', '#/events', '#/events/annual-dance-fest', '#/clubs', '#/units', '#/login', '#/login/student', '#/nope']) await check(h);
+    for (const h of ['#/', '#/events', '#/events/annual-dance-fest', '#/clubs', '#/units', '#/login', '#/login/student', '#/signup', '#/nope']) await check(h);
     await asStudent(); await check('#/dashboard');
     await shot('13-mobile-student-dashboard', { width: 375 });
     await page.setViewport({ width: 375, height: 812, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
@@ -574,7 +650,7 @@ try {
     await asFaculty(); for (const h of ['#/faculty', '#/faculty/clubs', '#/events', '#/faculty/users', '#/faculty/announcements']) await check(h);
     await page.setViewport({ width: 1280, height: 860, deviceScaleFactor: 1 });
     expect(bad.length === 0, bad.join(', '));
-    return '18 routes checked at 375 px, all scrollWidth ≤ 375';
+    return '19 routes checked at 375 px, all scrollWidth ≤ 375';
   });
 
   await test('N2', 'Footer notice on every page', 'Visit main routes', '"Unofficial student project" everywhere', async () => {
@@ -593,7 +669,9 @@ try {
   });
 } finally {
   await browser.close();
-  await new Promise(r => server.httpServer.close(r));
+  server.kill();
+  await sleep(300);
+  rmSync(DB_PATH, { force: true });
 }
 
 // ---------- report ----------

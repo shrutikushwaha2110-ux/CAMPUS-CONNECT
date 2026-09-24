@@ -34,8 +34,8 @@ export function Navbar() {
     ? clubs.find(c => c.id === session.clubId)?.name
     : undefined;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setMobileOpen(false);
     navigate('/login');
   };

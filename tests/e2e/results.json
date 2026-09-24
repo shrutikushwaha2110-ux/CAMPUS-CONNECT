@@ -1,8 +1,8 @@
 {
-  "date": "2026-09-24 05:54",
+  "date": "2026-09-24 09:48",
   "browser": "C:/Program Files/Google/Chrome/Application/chrome.exe",
-  "passed": 36,
-  "total": 36,
+  "passed": 40,
+  "total": 40,
   "results": [
     {
       "id": "A1",
@@ -11,7 +11,7 @@
       "expected": "Three role login cards: Student, Club Manager, Faculty/Admin",
       "actual": "Cards: student, clubManager, faculty",
       "pass": true,
-      "ms": 1055
+      "ms": 1011
     },
     {
       "id": "A1",
@@ -20,7 +20,7 @@
       "expected": "Error, stays on login page",
       "actual": "\"Email or password is incorrect.\"",
       "pass": true,
-      "ms": 2581
+      "ms": 2909
     },
     {
       "id": "A1",
@@ -29,7 +29,7 @@
       "expected": "Error: use the login page for your role",
       "actual": "\"This account is not a Faculty/Admin account. Use the login page for your role.\"",
       "pass": true,
-      "ms": 2638
+      "ms": 2994
     },
     {
       "id": "A1",
@@ -38,7 +38,7 @@
       "expected": "/dashboard, /manage, /faculty",
       "actual": "#/dashboard, #/manage, #/faculty",
       "pass": true,
-      "ms": 7478
+      "ms": 8946
     },
     {
       "id": "A1",
@@ -47,7 +47,7 @@
       "expected": "Navbar pill shows \"Priya Sharma · Club Manager · Dance Club\"",
       "actual": "C\nPriya Sharma · Club Manager · Dance Club",
       "pass": true,
-      "ms": 4133
+      "ms": 4261
     },
     {
       "id": "R17",
@@ -56,7 +56,43 @@
       "expected": "Redirect to /login/student?next=…",
       "actual": "#/login/student?next=%2Fdashboard",
       "pass": true,
-      "ms": 1268
+      "ms": 1313
+    },
+    {
+      "id": "SU1",
+      "name": "Sign up as a new student, log out, log in again",
+      "input": "Sign up \"Neha Rao\" neha@student.atria.edu / campus2026; log out; log in on /login/student",
+      "expected": "Lands on dashboard after sign-up and again after the later login",
+      "actual": "After sign-up: #/dashboard \"Hi, Neha\"; after logging out and back in: #/dashboard \"Hi, Neha\"",
+      "pass": true,
+      "ms": 6161
+    },
+    {
+      "id": "SU1",
+      "name": "Sign-up form rejects bad input",
+      "input": "Existing email, short password, mismatched confirm",
+      "expected": "Field errors, no account created",
+      "actual": "Browser check: su-password: Use at least 8 characters with letters and numbers; su-confirm: Passwords do not match · Server check: \"An account with this email already exists. Log in instead.\"",
+      "pass": true,
+      "ms": 2090
+    },
+    {
+      "id": "SU2",
+      "name": "Club Manager sign-up waits for the faculty head’s approval",
+      "input": "Sign up \"Kabir\" as Dance Club manager; try to log in; Dance head approves in Users; log in again",
+      "expected": "Pending message, login refused, then works after approval",
+      "actual": "\"Request sent … waiting for approval\"; login refused (\"Your account is waiting for approval by a faculty member.\"); Music head sees no Approve button; Dance head approved → Kabir lands on \"Dance Club\"",
+      "pass": true,
+      "ms": 16019
+    },
+    {
+      "id": "SU4",
+      "name": "Passwords never reach the browser",
+      "input": "Faculty loads /api/state (all users)",
+      "expected": "No password or hash in the response",
+      "actual": "State has 1 users, no password fields or hashes",
+      "pass": true,
+      "ms": 16
     },
     {
       "id": "S1",
@@ -65,7 +101,7 @@
       "expected": "13 upcoming events, 6 clubs, both rule messages shown",
       "actual": "13 events, 6 clubs; rules: \"You can join a maximum of 2 clubs.\" + \"You can attend/register for events from any club.\"",
       "pass": true,
-      "ms": 3512
+      "ms": 3719
     },
     {
       "id": "F5a",
@@ -74,7 +110,7 @@
       "expected": "Registered; dashboard shows Confirmed",
       "actual": "Card: \"Your registration: Confirmed / Registered\"; dashboard lists Open Mic Evening · Confirmed",
       "pass": true,
-      "ms": 1323
+      "ms": 1361
     },
     {
       "id": "F9a",
@@ -83,7 +119,7 @@
       "expected": "Third join blocked: \"Limit reached\", counter 2/2",
       "actual": "Sports Club button \"Limit reached\" (disabled); banner \"You've joined 2 of 2\"; 2 memberships stored",
       "pass": true,
-      "ms": 1653
+      "ms": 1695
     },
     {
       "id": "F9a",
@@ -92,7 +128,7 @@
       "expected": "Registration succeeds",
       "actual": "Confirmed",
       "pass": true,
-      "ms": 877
+      "ms": 878
     },
     {
       "id": "F9",
@@ -101,7 +137,7 @@
       "expected": "Sports \"Join\" enabled again",
       "actual": "Sports button: \"Join\"",
       "pass": true,
-      "ms": 1445
+      "ms": 1453
     },
     {
       "id": "F10",
@@ -110,7 +146,7 @@
       "expected": "Registrations, clubs 2/2, announcements, suggestions",
       "actual": "Sections: registrations, upcoming for you, My clubs (2/2), announcements (university + Dance + Music), following",
       "pass": true,
-      "ms": 1040
+      "ms": 1105
     },
     {
       "id": "M3",
@@ -119,7 +155,7 @@
       "expected": "Status \"Pending approval\"",
       "actual": "Pending approval",
       "pass": true,
-      "ms": 841
+      "ms": 852
     },
     {
       "id": "M3",
@@ -128,7 +164,7 @@
       "expected": "Student then sees Confirmed",
       "actual": "Manager saw \"Shruti Kushwaha · Pending approval\", clicked Accept → Confirmed; student dashboard shows Battle of Bands · Confirmed",
       "pass": true,
-      "ms": 7127
+      "ms": 7350
     },
     {
       "id": "M3",
@@ -137,7 +173,7 @@
       "expected": "Raju sees Rejected; seats filled goes back down",
       "actual": "Seats filled 50/60 → 49/60; Raju sees \"Rejected\"",
       "pass": true,
-      "ms": 10302
+      "ms": 10527
     },
     {
       "id": "M1",
@@ -146,7 +182,7 @@
       "expected": "Only Dance Club events, members, announcements",
       "actual": "club=dance-club; events=annual-dance-fest, dance-workshop; members list includes Shruti Kushwaha",
       "pass": true,
-      "ms": 3393
+      "ms": 4006
     },
     {
       "id": "M1",
@@ -155,7 +191,7 @@
       "expected": "All three show \"Not available\"",
       "actual": "Music registrations, Music edit URL and /faculty/clubs all blocked",
       "pass": true,
-      "ms": 2339
+      "ms": 2413
     },
     {
       "id": "M6",
@@ -164,7 +200,7 @@
       "expected": "Nav = Manage club + Events; other pages redirect to /manage; Events = student-style page with only Music events + Music announcements",
       "actual": "Nav: \"Manage club\" + \"Events\"; #/→#/manage, #/clubs→#/manage, #/units→#/manage; Events page = student UI (search, category chips, date filter, cards) titled \"Events\", scoped \"Events hosted by Music Club\"; cards=open-mic-evening, battle-of-bands; announcements = Music only; Dance event URL blocked",
       "pass": true,
-      "ms": 6501
+      "ms": 6418
     },
     {
       "id": "O2",
@@ -173,7 +209,7 @@
       "expected": "Errors shown, event not created",
       "actual": "date: Date cannot be in the past; seats: Seats must be at least 1",
       "pass": true,
-      "ms": 4070
+      "ms": 4306
     },
     {
       "id": "O1",
@@ -182,7 +218,7 @@
       "expected": "Appears on /events hosted by Dance Club",
       "actual": "Host field: \"Dance Club (locked)\"; listed in the manager's Events section and on the student /events page \"by Dance Club\"",
       "pass": true,
-      "ms": 4107
+      "ms": 4634
     },
     {
       "id": "M5",
@@ -191,7 +227,7 @@
       "expected": "Shown in the manager's Events section; Shruti (Dance member) sees it on her dashboard",
       "actual": "Audience \"Dance Club members (locked)\"; student dashboard shows \"Costume fitting\"",
       "pass": true,
-      "ms": 6704
+      "ms": 7060
     },
     {
       "id": "F14",
@@ -200,7 +236,7 @@
       "expected": "Dashboard: \"Cancelled by organiser\"; event page blocks registering",
       "actual": "Dashboard row: \"Annual Dance Fest … Cancelled by organiser\"; other student sees \"Cancelled\" (disabled)",
       "pass": true,
-      "ms": 11061
+      "ms": 12105
     },
     {
       "id": "FA1",
@@ -209,16 +245,16 @@
       "expected": "Stats + links to Clubs, Events, Users, Announcements",
       "actual": "Stats tiles + 4 management areas shown",
       "pass": true,
-      "ms": 3109
+      "ms": 3407
     },
     {
       "id": "O3f",
       "name": "Faculty head manages own club + university events only",
       "input": "Dr. Farah Khan (head of Dance): Events page; edit Dance Workshop; open Maker Tools (unit) and Open Mic (Music) edit URLs",
       "expected": "Own + unit events only; Music edit blocked",
-      "actual": "Navbar: Admin, My club, Events, Clubs, Users; Events rows: annual-dance-fest, film-screening, maker-tools-workshop, dance-workshop, ai-ethics-talk, career-fair, salsa-social-night-xh7y; Dance Workshop venue → Studio B (student sees it); unit event editable; Music event edit blocked",
+      "actual": "Navbar: Admin, My club, Events, Clubs, Users; Events rows: annual-dance-fest, film-screening, maker-tools-workshop, dance-workshop, ai-ethics-talk, career-fair, salsa-social-night-3xo4; Dance Workshop venue → Studio B (student sees it); unit event editable; Music event edit blocked",
       "pass": true,
-      "ms": 8616
+      "ms": 9660
     },
     {
       "id": "C2",
@@ -227,7 +263,7 @@
       "expected": "Error, nothing created",
       "actual": "\"A club with this name already exists\"",
       "pass": true,
-      "ms": 880
+      "ms": 846
     },
     {
       "id": "C1",
@@ -236,7 +272,7 @@
       "expected": "Listed on /clubs",
       "actual": "Photography Club shown on /clubs",
       "pass": true,
-      "ms": 1419
+      "ms": 1437
     },
     {
       "id": "C3",
@@ -245,7 +281,7 @@
       "expected": "New description on /clubs",
       "actual": "Dance description updated; Music Club edit URL blocked; \"My club\" lists only Dance Club",
       "pass": true,
-      "ms": 2892
+      "ms": 2801
     },
     {
       "id": "U1",
@@ -254,7 +290,7 @@
       "expected": "Managers: only Dance Club offered; faculty head: only clubs without a head; Asha manages Photography",
       "actual": "Club Manager → clubs offered: Dance Club; Faculty head → clubs offered: Photography Club; Asha logged in, \"My club\" = Photography Club",
       "pass": true,
-      "ms": 4762
+      "ms": 5041
     },
     {
       "id": "U2",
@@ -263,7 +299,7 @@
       "expected": "Error: account deactivated",
       "actual": "\"This account has been deactivated. Contact your faculty head.\"",
       "pass": true,
-      "ms": 6160
+      "ms": 6982
     },
     {
       "id": "U3",
@@ -272,7 +308,7 @@
       "expected": "Other faculty + other clubs' managers show no Edit/Deactivate; own club manager and students do",
       "actual": "Dr. Vikram Shah: no buttons (\"Protected: faculty account\"); Prof. Meera Nair: none; Music manager: none; Dance manager: Edit/Deactivate; student: Edit/Deactivate",
       "pass": true,
-      "ms": 3619
+      "ms": 4258
     },
     {
       "id": "F17",
@@ -281,7 +317,7 @@
       "expected": "Gone from /clubs and Shruti’s dashboard; its events cancelled; its manager and head can’t log in",
       "actual": "Dialog warned 2 upcoming event(s); not on /clubs; Shruti's My clubs = Dance only; Battle of Bands cancelled; Music manager AND Music head logins refused",
       "pass": true,
-      "ms": 12917
+      "ms": 14176
     },
     {
       "id": "N4",
@@ -290,7 +326,7 @@
       "expected": "data-motion=reduced and exactly 1 frame drawn",
       "actual": "reduce → motion=reduced, frames=1 (still 1 after 1 s); switched back → motion=full, frames=60",
       "pass": true,
-      "ms": 5382
+      "ms": 6414
     },
     {
       "id": "N4",
@@ -299,16 +335,16 @@
       "expected": "No canvas, hero/search/featured still render, no errors",
       "actual": "0 canvases; hero, search and featured event rendered; 0 page errors",
       "pass": true,
-      "ms": 3263
+      "ms": 4278
     },
     {
       "id": "N1",
       "name": "Phone width (375 px), every role",
       "input": "375×812 on public, student, manager, faculty pages",
       "expected": "No sideways scroll anywhere",
-      "actual": "18 routes checked at 375 px, all scrollWidth ≤ 375",
+      "actual": "19 routes checked at 375 px, all scrollWidth ≤ 375",
       "pass": true,
-      "ms": 21388
+      "ms": 23228
     },
     {
       "id": "N2",
@@ -317,7 +353,7 @@
       "expected": "\"Unofficial student project\" everywhere",
       "actual": "Present on all 7",
       "pass": true,
-      "ms": 3409
+      "ms": 3349
     },
     {
       "id": "—",

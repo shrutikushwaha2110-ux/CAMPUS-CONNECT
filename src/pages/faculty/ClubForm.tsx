@@ -30,7 +30,7 @@ export function ClubForm() {
 
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     const errs = validateClub({ ...form, id: existing?.id }, clubs);
     if (!units.some(u => u.id === form.unitId)) errs.unitId = 'Pick a supervising unit';
@@ -45,7 +45,8 @@ export function ClubForm() {
       managerName: form.managerName.trim(),
       memberCount: existing?.memberCount ?? 0,
     };
-    saveClub(club);
+    const r = await saveClub(club);
+    if (!r.ok) { setErrors(r.errors ?? {}); toast(r.error); return; }
     toast(existing ? `Saved ${club.name}` : `${club.name} added. Assign its faculty head and club manager in Users.`);
     navigate('/faculty/clubs');
   };

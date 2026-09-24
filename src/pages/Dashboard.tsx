@@ -9,11 +9,10 @@ import { StudentRules } from '../components/StudentRules';
 import { Card, ConfirmDialog, EmptyState, PageHeader, Pill, RegStatusPill, Section, StatTile, useToast } from '../components/ui';
 import { formatDate, getToday } from '../lib/date';
 import { upcomingSorted } from '../lib/eventFilter';
-import { memberCount } from '../lib/memberships';
 import { MAX_CLUBS_PER_STUDENT } from '../lib/constants';
 
 export function Dashboard() {
-  const { events, clubs, units, announcements, memberships, currentUser, hostName } = useAppData();
+  const { events, clubs, units, announcements, clubMemberCount, currentUser, hostName } = useAppData();
   const { mine } = useRegistrations();
   const { joinedClubs, followedUnits, leaveClub } = useMemberships();
   const toast = useToast();
@@ -41,9 +40,9 @@ export function Dashboard() {
       .slice(0, 4);
   }, [events, mine, joinedClubs]);
 
-  const confirmLeave = () => {
+  const confirmLeave = async () => {
     if (!leaving) return;
-    leaveClub(leaving.id);
+    await leaveClub(leaving.id);
     toast(`You left ${leaving.name}`);
     setLeaving(null);
   };
@@ -119,7 +118,7 @@ export function Dashboard() {
                     <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white" style={{ backgroundColor: '#1C1750' }}>{c.name[0]}</div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-text">{c.name}</p>
-                      <p className="text-xs mt-0.5 text-text-muted">{memberCount(c, memberships)} members</p>
+                      <p className="text-xs mt-0.5 text-text-muted">{clubMemberCount(c)} members</p>
                     </div>
                     <button onClick={() => setLeaving({ id: c.id, name: c.name })} className="text-xs font-semibold text-text-muted hover:text-[#991B1B]">Leave</button>
                   </Card>

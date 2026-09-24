@@ -35,7 +35,7 @@ export function NotAllowed({ allowed, message }: { allowed?: Role[]; message?: s
         </p>
         <div className="flex gap-2 flex-wrap justify-center">
           {session && <ButtonLink to={ROLE_HOME[session.role]} variant="secondary">Go to my dashboard</ButtonLink>}
-          <Button onClick={() => { logout(); navigate('/login'); }}>Switch role</Button>
+          <Button onClick={async () => { await logout(); navigate('/login'); }}>Switch role</Button>
         </div>
       </Card>
     </div>
