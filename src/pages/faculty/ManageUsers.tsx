@@ -31,7 +31,6 @@ export function ManageUsers() {
   // Adding: students, managers for my club, or a faculty head for a club that has none
   const roleChoices: Role[] = editingSelf ? ['faculty'] : ['student', 'clubManager', 'faculty'];
 
-  const startEdit = (u: User) => { setErrors({}); setDraft({ id: u.id, name: u.name, email: u.email, role: u.role, clubId: u.clubId ?? '', password: '' }); };
   const startNew = () => { setErrors({}); setDraft({ ...blank }); };
   const setRole = (role: Role) => {
     if (!draft) return;
@@ -183,7 +182,6 @@ export function ManageUsers() {
               <div className="flex gap-2 items-center flex-wrap">
                 <Pill tone={u.role === 'faculty' ? 'grey' : 'purple'}>{ROLE_LABELS[u.role]}</Pill>
                 {u.status === 'declined' ? <Pill tone="grey">Sign-up declined</Pill> : u.active ? <Pill tone="green">Active</Pill> : <Pill tone="red">Deactivated</Pill>}
-                {editable && u.status === 'approved' && <Button variant="ghost" onClick={() => startEdit(u)}>Edit</Button>}
                 {deactivatable && u.status === 'approved' && (
                   <Button variant={u.active ? 'danger' : 'success'} onClick={() => setToggling(u)}>{u.active ? 'Deactivate' : 'Activate'}</Button>
                 )}
