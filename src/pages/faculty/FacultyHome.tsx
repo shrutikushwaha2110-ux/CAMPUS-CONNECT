@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useAppData } from '../../state/AppData';
 import { getToday, formatDate } from '../../lib/date';
 import { seatsLeft, seatStatus } from '../../lib/seats';
+import { canManageEvent } from '../../lib/permissions';
 import { upcomingSorted } from '../../lib/eventFilter';
 import { AnnouncementsList } from '../../components/staff';
 import { ButtonLink, Card, EmptyState, PageHeader, Pill, Section, StatTile } from '../../components/ui';
@@ -15,7 +16,7 @@ const AREAS = [
 ];
 
 export function FacultyHome() {
-  const { currentUser, clubs, events, registrations, users, announcements, localTaken, hostName } = useAppData();
+  const { session, currentUser, clubs, events, registrations, users, announcements, localTaken, hostName } = useAppData();
   const today = getToday();
   const upcoming = upcomingSorted(events).filter(e => e.status === 'active');
   const pending = registrations.filter(r => r.status === 'pending');
@@ -64,7 +65,7 @@ export function FacultyHome() {
                     {p > 0 && <Pill tone="amber">{p} pending</Pill>}
                     {status(e) === 'full' && <Pill tone="red">Full</Pill>}
                     {status(e) === 'almost-full' && <Pill tone="amber">{left} left</Pill>}
-                    <Link to={`/manage/events/${e.id}/registrations`} className="text-xs font-semibold text-primary">Review →</Link>
+                    {canManageEvent(session, e) && <Link to={`/manage/events/${e.id}/registrations`} className="text-xs font-semibold text-primary">Review →</Link>}
                   </Card>
                 );
               })}

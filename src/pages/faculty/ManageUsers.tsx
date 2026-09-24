@@ -1,10 +1,14 @@
-// /faculty/users: Faculty/Admin manages accounts: add, change role / club assignment, deactivate (U1, U2)
+// /faculty/users: faculty manage accounts (U1–U3, rule 26)
+// - students: add / edit / deactivate
+// - club managers: only for the club this faculty member heads
+// - other faculty: view only. Never edit, demote or deactivate them.
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useAppData } from '../../state/AppData';
 import type { User } from '../../data/types';
 import { ROLE_LABELS, type Role } from '../../lib/constants';
 import { validateUser, type Errors } from '../../lib/validation';
+import { assignableClubs, canDeactivateUser, canEditUser } from '../../lib/permissions';
 import { Button, Card, ConfirmDialog, Field, PageHeader, Pill, SelectInput, TextInput, useToast } from '../../components/ui';
 
 type Draft = { id?: string; name: string; email: string; role: Role; clubId: string; password: string };
@@ -17,28 +21,46 @@ export function ManageUsers() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [toggling, setToggling] = useState<User | null>(null);
+  const actor = session ? { ...session } : null;
+  const myClub = clubs.find(c => c.id === session?.clubId);
 
   const list = users.filter(u => !roleFilter || u.role === roleFilter);
+  const editingSelf = !!draft?.id && draft.id === session?.userId;
+  const clubChoices = draft ? assignableClubs(actor, draft.role, clubs, users, draft.id) : [];
+  // Adding: students, managers for my club, or a faculty head for a club that has none
+  const roleChoices: Role[] = editingSelf ? ['faculty'] : ['student', 'clubManager', 'faculty'];
 
   const startEdit = (u: User) => { setErrors({}); setDraft({ id: u.id, name: u.name, email: u.email, role: u.role, clubId: u.clubId ?? '', password: '' }); };
   const startNew = () => { setErrors({}); setDraft({ ...blank }); };
+  const setRole = (role: Role) => {
+    if (!draft) return;
+    const choices = assignableClubs(actor, role, clubs, users, draft.id);
+    setDraft({ ...draft, role, clubId: choices.length === 1 ? choices[0].id : '' });
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!draft) return;
-    const input = { ...draft, clubId: draft.role === 'clubManager' ? draft.clubId : undefined, password: draft.id ? undefined : draft.password };
+    const needsClub = draft.role === 'clubManager' || draft.role === 'faculty';
+    const input = { ...draft, clubId: needsClub ? draft.clubId : undefined, password: draft.id ? undefined : draft.password };
     const errs = validateUser(input, users, liveClubIds);
-    if (draft.id && draft.id === session?.userId && draft.role !== 'faculty') errs.role = "You can't remove your own admin access";
+    const prev = draft.id ? users.find(u => u.id === draft.id) : undefined;
+    if (prev && !canEditUser(actor, prev)) errs.role = 'You cannot change this account';
+    if (editingSelf && draft.role !== 'faculty') errs.role = "You can't remove your own faculty access";
+    if (needsClub && !editingSelf && !clubChoices.some(c => c.id === draft.clubId)) {
+      errs.clubId = draft.role === 'clubManager'
+        ? 'You can only assign club managers to the club you head'
+        : 'Pick a club that has no faculty head yet';
+    }
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    const prev = draft.id ? users.find(u => u.id === draft.id) : undefined;
     const user: User = {
       id: draft.id ?? newId(draft.name),
       name: draft.name.trim(),
       email: draft.email.trim().toLowerCase(),
       password: prev?.password ?? draft.password,
       role: draft.role,
-      clubId: draft.role === 'clubManager' ? draft.clubId : undefined,
+      clubId: needsClub ? draft.clubId : undefined,
       active: prev?.active ?? true,
     };
     saveUser(user);
@@ -47,7 +69,7 @@ export function ManageUsers() {
   };
 
   const confirmToggle = () => {
-    if (!toggling) return;
+    if (!toggling || !canDeactivateUser(actor, toggling)) { setToggling(null); return; }
     saveUser({ ...toggling, active: !toggling.active });
     toast(`${toggling.name} ${toggling.active ? 'deactivated. They can no longer log in' : 'reactivated'}`);
     setToggling(null);
@@ -57,7 +79,8 @@ export function ManageUsers() {
     <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-12">
       <Link to="/faculty" className="text-sm font-semibold text-primary">← Admin dashboard</Link>
       <div className="mt-4">
-        <PageHeader eyebrow="Faculty / Admin" title="Users" subtitle="Add accounts, assign Club Managers to clubs, and deactivate accounts."
+        <PageHeader eyebrow="Faculty / Admin" title="Users"
+          subtitle={<>You can manage students and the club managers of <strong>{myClub?.name ?? 'your club'}</strong>. Other faculty members' accounts are protected: you can see them but not edit or deactivate them.</>}
           actions={<Button onClick={startNew}>+ Add user</Button>} />
       </div>
 
@@ -67,16 +90,17 @@ export function ManageUsers() {
           <form onSubmit={submit} noValidate className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="user-form">
             <Field label="Full name" htmlFor="u-name" error={errors.name}><TextInput id="u-name" value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} invalid={!!errors.name} /></Field>
             <Field label="Email" htmlFor="u-email" error={errors.email}><TextInput id="u-email" type="email" value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} invalid={!!errors.email} /></Field>
-            <Field label="Role" htmlFor="u-role" error={errors.role}>
-              <SelectInput id="u-role" value={draft.role} onChange={e => setDraft({ ...draft, role: e.target.value as Role })}>
-                {(Object.keys(ROLE_LABELS) as Role[]).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+            <Field label="Role" htmlFor="u-role" error={errors.role} hint={editingSelf ? 'You cannot change your own role.' : undefined}>
+              <SelectInput id="u-role" value={draft.role} onChange={e => setRole(e.target.value as Role)} disabled={editingSelf}>
+                {roleChoices.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
               </SelectInput>
             </Field>
-            {draft.role === 'clubManager' ? (
-              <Field label="Assigned club" htmlFor="u-club" error={errors.clubId} hint="The manager will only see this club.">
+            {(draft.role === 'clubManager' || draft.role === 'faculty') && !editingSelf ? (
+              <Field label={draft.role === 'faculty' ? 'Club they head' : 'Assigned club'} htmlFor="u-club" error={errors.clubId}
+                hint={draft.role === 'faculty' ? 'Only clubs without a faculty head are listed.' : 'Managers can only be assigned to the club you head.'}>
                 <SelectInput id="u-club" value={draft.clubId} onChange={e => setDraft({ ...draft, clubId: e.target.value })} invalid={!!errors.clubId}>
-                  <option value="">Select a club…</option>
-                  {clubs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="">{clubChoices.length ? 'Select a club…' : 'No club available'}</option>
+                  {clubChoices.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </SelectInput>
               </Field>
             ) : <div />}
@@ -107,7 +131,10 @@ export function ManageUsers() {
           const club = u.clubId ? clubs.find(c => c.id === u.clubId) : undefined;
           const activity = u.role === 'student'
             ? `${registrations.filter(r => r.userId === u.id).length} registrations · ${memberships.filter(m => m.userId === u.id).length} clubs`
-            : u.role === 'clubManager' ? (club ? `Manages ${club.name}` : 'No active club') : 'Full admin access';
+            : u.role === 'clubManager' ? (club ? `Manages ${club.name}` : 'No active club')
+              : (club ? `Head of ${club.name}` : 'No active club');
+          const editable = canEditUser(actor, u);
+          const deactivatable = canDeactivateUser(actor, u);
           return (
             <Card key={u.id} className="p-4 flex flex-col md:flex-row md:items-center gap-3" data-user={u.id}>
               <div className="flex-1 min-w-0">
@@ -117,9 +144,14 @@ export function ManageUsers() {
               <div className="flex gap-2 items-center flex-wrap">
                 <Pill tone={u.role === 'faculty' ? 'grey' : 'purple'}>{ROLE_LABELS[u.role]}</Pill>
                 {u.active ? <Pill tone="green">Active</Pill> : <Pill tone="red">Deactivated</Pill>}
-                <Button variant="ghost" onClick={() => startEdit(u)}>Edit</Button>
-                {u.id !== session?.userId && (
+                {editable && <Button variant="ghost" onClick={() => startEdit(u)}>Edit</Button>}
+                {deactivatable && (
                   <Button variant={u.active ? 'danger' : 'success'} onClick={() => setToggling(u)}>{u.active ? 'Deactivate' : 'Activate'}</Button>
+                )}
+                {!editable && (
+                  <span className="text-xs text-text-muted" data-protected>
+                    {u.role === 'faculty' ? 'Protected: faculty account' : `Managed by the ${club?.name ?? 'club'}'s faculty head`}
+                  </span>
                 )}
               </div>
             </Card>

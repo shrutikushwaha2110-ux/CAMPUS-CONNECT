@@ -37,4 +37,4 @@ Why narrow tools: the writer can't run tests and the runner can't edit source, s
 
 ## Plugin
 **Figma plugin** (`figma@claude-plugins-official` v2.2.111): installed and **actually used**. Its `figma-design-to-code` skill fired and its MCP server's `get_design_context` pulled the Make file this site is built from (MCP_LOG rows 1–4).
-**Screenshot to take 📸:** scroll this conversation to "Launching skill: figma:figma-design-to-code" and the `get_design_context` result listing the source files.
+

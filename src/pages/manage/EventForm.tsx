@@ -70,10 +70,10 @@ export function EventForm() {
     };
     saveEvent(event);
     toast(existing ? `Saved changes to ${event.title}` : `${event.title} created. It's now on the Events page.`);
-    navigate(session?.role === 'faculty' ? '/faculty/events' : '/manage');
+    navigate('/events');
   };
 
-  const back = session?.role === 'faculty' ? '/faculty/events' : '/manage';
+  const back = '/events';
 
   return (
     <div className="max-w-[760px] mx-auto px-4 md:px-6 py-12">

@@ -2,8 +2,8 @@
 
 A multi-page React site with **three roles, each with its own login and dashboard**:
 - **Students** browse and register for any event, and join up to 2 clubs.
-- **Club Managers** run exactly one club: its events, registrations, members and announcements.
-- **Faculty/Admin** manage everything: clubs, events, users and announcements.
+- **Club Managers** run exactly one club. They have only two sections: **Manage club** and **Events** (their hosted events + announcements).
+- **Faculty** each **head one club**. They manage that club + university (unit) events, add new clubs, and manage student / own-club-manager accounts, but **never another faculty member's account**.
 
 It's an unofficial student project, and all clubs, events and accounts are sample data.
 
@@ -24,7 +24,7 @@ It's an unofficial student project, and all clubs, events and accounts are sampl
 |---|---|---|
 | `npm run dev` | Vite dev server (5173; the preview pane uses 5180) | while building |
 | `npm test` | 108 Vitest tests for every rule in `src/lib` | after any logic change (a hook runs it automatically) |
-| `npm run test:e2e` | Builds, serves `dist/`, drives Chrome through 34 role scenarios, writes `docs/E2E_RESULTS.md` + screenshots | before any PR / demo |
+| `npm run test:e2e` | Builds, serves `dist/`, drives Chrome through 36 role scenarios, writes `docs/E2E_RESULTS.md` + screenshots | before any PR / demo |
 | `npm run test:hooks` | 9 test cases proving the hooks fire on the right events | after touching `.claude/hooks/` |
 | `npm run build` | `tsc --noEmit` + production build → `dist/` | must pass before any PR |
 
@@ -39,11 +39,11 @@ src/
                          seats · registrations · memberships · permissions · validation · auth · clubs · eventFilter · merge · storage · date · constants
   components/          Navbar (role-aware), Footer, EventCard, SeatsBadge, … (Figma-derived)
                        ui.tsx (Button, Card, Field, ConfirmDialog, Toast…), staff.tsx (EventsTable, SeatsBar, AnnouncementsList),
-                       RequireRole.tsx (route guard + "Not available for your role"), StudentRules.tsx (the 2 student rules)
+                       RequireRole.tsx (route guard + "Not available for your role"), StaffRoute.tsx (HideFor / ByRole), StudentRules.tsx
   components/3d/       HeroScene.tsx (Three.js only, no business rules)
   pages/               public + student: Home, Events, EventDetails, Clubs, Units, Dashboard (student), Login (+ RoleLogin), NotFound, Root
-  pages/manage/        Club Manager (+ Faculty via shared routes): ManageHome, ClubAdminView, EventForm, EventRegistrations, AnnouncementForm
-  pages/faculty/       Faculty/Admin: FacultyHome, ManageClubs, ClubForm, FacultyClubDetail, FacultyEvents, ManageUsers, FacultyAnnouncements
+  pages/manage/        Club Manager (+ Faculty via shared routes): ManageHome, ClubAdminView, StaffEvents (staff /events), EventForm, EventRegistrations, AnnouncementForm
+  pages/faculty/       Faculty: FacultyHome (admin dashboard), ManageClubs ("My club"), ClubForm, FacultyClubDetail, ManageUsers, FacultyAnnouncements
   data/                events, clubs, units, users, announcements (.json) + types.ts
 tests/e2e/run.mjs      browser test suite
 docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVERABLES.md, screenshots/, figma/
@@ -59,21 +59,30 @@ docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVE
 5. **Dates** come from `getToday()` (`YYYY-MM-DD`). Lib functions take an optional `today`, and tests use `'2026-11-01'`.
 6. **Constants** (categories, roles, `MAX_CLUBS_PER_STUDENT = 2`, `ALMOST_FULL_THRESHOLD = 5`, `ROLE_HOME`, `ROLE_SLUGS`) live in `lib/constants.ts`.
 
-## Roles & access (SPEC §2, rules 12, 17, 18, 25, 26)
+## Roles & access (SPEC §2, rules 12, 17, 18, 25–27)
 
-| | Student | Club Manager | Faculty/Admin |
+| | Student | Club Manager | Faculty |
 |---|---|---|---|
 | Login page | `/login/student` | `/login/club-manager` | `/login/faculty` |
 | Home | `/dashboard` | `/manage` | `/faculty` |
-| Scope | own registrations, clubs (max 2), follows | **only `session.clubId`** | everything |
+| Navbar | Events · Clubs · Units · My dashboard | **Manage club · Events** (nothing else) | Admin · My club · Events · Clubs · Users (no Units) |
+| `/events` | all events (student list) | **own club's hosted events + announcements** (`StaffEvents`) | own club's events + **unit** events + own/university announcements (`StaffEvents`) |
+| Scope | own registrations, clubs (max 2), follows | **only `session.clubId`** | **own `session.clubId`** + unit events; may add clubs; users = students + own club's managers; other faculty are **protected** |
+
+**Why staff get `StaffEvents`, not the student list:** staff can't register, and they may only act on their own club's events (+ unit events for faculty). A page listing exactly those, with Edit / Cancel / Registrations on every row, matches their permissions. One component serves both staff roles. Don't "fix" this back to the student list.
+
+- `HideFor` / `ByRole` (`components/StaffRoute.tsx`) do the role-specific routing: Club Managers are redirected from `/`, `/clubs`, `/units` to `/manage`; Faculty from `/` and `/units` to `/faculty`.
+- Staff opening another club's event page (`/events/:id`) get "Not available". Students and visitors see every event.
 
 - The session is `{ userId, role, clubId? }` in `campusconnect.session`, and it's **re-validated on every load** (`validateSession`): a deactivated user, a changed role or a deleted club ends it.
 - Access is enforced **twice**:
   1. `RequireRole` on the route (logged out → role login with `?next=`; wrong role → "Not available for your role").
-  2. Inside pages that show one club's or one event's private data (`canViewClubAdmin`, `canManageEvent`, `canManageAnnouncement`).
+  2. Inside pages that show one club's or one event's private data (`canViewClubAdmin`, `canManageEvent`, `canEditClub`, `canManageAnnouncement`, `canEditUser`).
 
-  A Club Manager typing `/manage/events/<other-club-event>/registrations` must be blocked. Keep both layers whenever you add a page.
-- Faculty reuse the `/manage/events/*` and `/manage/announcements/*` pages with full scope.
+  A Club Manager or Faculty member typing `/manage/events/<other-club-event>/edit` or `/faculty/clubs/<other-club>/edit` must be blocked. Keep both layers whenever you add a page.
+  The **store actions** (`saveEvent`, `cancelEvent`, `reviewRegistration`, `saveClub`, `deleteClub`, `saveAnnouncement`, `saveUser`) re-check the same permission functions, so a UI bug can't bypass them.
+- Faculty reuse the `/manage/events/*` and `/manage/announcements/*` pages, limited to their own club + unit events.
+- A deleted club invalidates the sessions of its manager **and** its faculty head (`validateSession`).
 - Passwords in `users.json` are **demo values, not security**. Never add real credentials or tokens anywhere.
 
 ## Figma-generated code

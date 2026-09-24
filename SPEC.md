@@ -2,13 +2,13 @@
 
 **Team:** Shruti (Figma design) · Raju (student pages & logic) · Sohail (staff pages)
 **Design source:** Figma Make file "Add Logo and Name" (`ej75XJhPL0fvejEo92cI3I`)
-**Version:** v2 (2026-09-23): three roles with separate logins and dashboards. v1 had a single demo student and a role picker.
+**Version:** v2.1 (2026-09-24): staff sections trimmed; each faculty member heads ONE club. v2 (2026-09-23): three roles with separate logins and dashboards. v1: single demo student.
 
 > This file is the source of truth. The team writes it; Claude may help think it through. A Claude Code hook blocks edits to it unless the team lists it in `.claude/hooks/approved-edits.txt` (see CLAUDE.md → Hooks).
 
 ## 1. Purpose
 
-CampusConnect is a **3D event-management website** for Atria University. Students find events, register for any of them and join clubs. Club Managers run one club: its events, registrations, members and announcements. Faculty/Admin oversee everything: clubs, events, users and announcements. Three.js adds purposeful depth and motion without getting in the way of the tasks.
+CampusConnect is a **3D event-management website** for Atria University. Students find events, register for any of them and join clubs. Club Managers run one club: its events, registrations, members and announcements. Each Faculty member heads one club, looks after university (unit) events, manages student and own-club accounts, and sees campus-wide statistics. Three.js adds purposeful depth and motion without getting in the way of the tasks.
 
 ## 2. Who the visitors are (roles)
 
@@ -18,8 +18,8 @@ The university has **units** (e.g. Digital Transformation) that **supervise** cl
 |---|---|---|---|
 | **Visitor** (not logged in) | n/a | any public page | Browse events, clubs, units. Asked to log in as a student to register, join or follow. |
 | **Student** | `/login/student` | `/dashboard` | See **all** events and clubs. Register for **any** event, whatever club hosts it; club membership is not required. Join **at most 2 clubs**. Follow units. See their registrations (with status), clubs, announcements and upcoming events. |
-| **Club Manager** | `/login/club-manager` | `/manage` | Assigned to exactly **one** club. Sees and manages **only that club**: info, members, upcoming events, registrations (accept/reject), announcements. Creates, edits and cancels that club's events. Can never see another club's management data. Cannot register for events or manage clubs/users. |
-| **Faculty / Admin** | `/login/faculty` | `/faculty` | Full access: view and manage **all** clubs (add, edit, delete), **all** events (create, edit, cancel, registrations), **users** (add, edit role / club assignment, deactivate), and **announcements** (university-wide or per club). |
+| **Club Manager** | `/login/club-manager` | `/manage` | Assigned to exactly **one** club. The navbar has **only two sections: "Manage club" and "Events"** (Home, Clubs and Units redirect to `/manage`). *Manage club*: club info, members, upcoming events (edit / cancel / registrations with accept-reject), + New event, + Announcement. *Events*: the club's hosted events (current, past & cancelled) and its announcements. Can never open another club's event or management data. Cannot register for events or manage clubs/users. |
+| **Faculty / Admin** | `/login/faculty` | `/faculty` | **Head of ONE club** (`clubId`). Navbar: Admin · My club · Events · Clubs · Users (no Units). Manages **only their own club** (view members & events, edit, delete) plus **university/unit-hosted events** (units are run by faculty, not clubs). May **add new clubs**. Users: add/edit/deactivate **students** and **their own club's managers**; may create a faculty head for a club that has none; can **never edit or deactivate another faculty member**. Announcements: university-wide or their own club. The admin dashboard shows campus-wide statistics (read-only). |
 
 Each role has its **own login page** and **own dashboard**. An account can only sign in on the page for its role. Logins are demo accounts in `src/data/users.json` (front-end only, **not real security**). Demo passwords: `demo123` (students, managers), `admin123` (faculty).
 
@@ -48,7 +48,7 @@ Using one browser for every role is on purpose: in the viva you can register as 
 | Page | Route | Contents |
 |---|---|---|
 | Home | `/` | 3D hero + search, featured event, upcoming events, popular clubs, units strip |
-| Events | `/events` | All upcoming events (soonest first), keyword search, category/date/host filters, seats badge, "by <host>", your status if logged in |
+| Events | `/events` | Students & visitors: all upcoming events (soonest first), search, filters, seats, your status. **Staff: "<Club> events"**: only the events they host (+ unit events for faculty), past & cancelled, and their announcements |
 | Event Details | `/events/:id` | Poster, date/time, venue, host link, description, seats, "open to all students" note, role-aware registration card |
 | Clubs | `/clubs` | Club cards, category filter, member count, supervising unit, upcoming club events, Join/Joined/Limit reached, **the two student rules** |
 | Units | `/units` | Unit cards, faculty head, supervised clubs, Follow |
@@ -65,10 +65,11 @@ Using one browser for every role is on purpose: in the viva you can register as 
 |---|---|---|
 | Student dashboard | `/dashboard` | Rules banner, stats (upcoming registrations, clubs x/2, units, campus events), my registered events with status (Confirmed / Pending approval / Rejected / Cancelled by organiser), upcoming events for you (your clubs first), my clubs with Leave, announcements (university + my clubs), followed units |
 
-### Club Manager (role `clubManager`, own club only)
+### Club Manager (role `clubManager`, own club only; navbar = Manage club + Events)
 | Page | Route | Contents |
 |---|---|---|
-| Club dashboard | `/manage` | Club info, stats (members, upcoming events, registrations, pending), events with seats filled + Registrations / Edit / Cancel, members list, club announcements |
+| Manage club | `/manage` | Club info, stats (members, upcoming events, registrations, pending), upcoming events with seats filled + Registrations / Edit / Cancel, + New event, + Announcement, members list |
+| Events | `/events` | Current hosted events, past & cancelled, club announcements (edit / delete) |
 | New / edit event | `/manage/events/new`, `/manage/events/:id/edit` | Form: title, category, host (locked to own club), date, time, venue, seats, description, "needs approval" |
 | Registrations | `/manage/events/:id/registrations` | Seats filled, confirmed/pending/rejected counts, students with Accept / Reject, earlier sample attendees |
 | New / edit announcement | `/manage/announcements/new`, `/manage/announcements/:id/edit` | Title + message; audience locked to own club |
@@ -77,13 +78,15 @@ Using one browser for every role is on purpose: in the viva you can register as 
 | Page | Route | Contents |
 |---|---|---|
 | Admin dashboard | `/faculty` | Stats (clubs, events, registrations, pending, users), links to the 4 areas, needs-attention list, latest announcements |
-| Clubs | `/faculty/clubs` | All clubs with manager account, members, events · View / Edit / Delete · Add club |
-| Club view | `/faculty/clubs/:id` | The same management view the club's manager sees |
+| My club | `/faculty/clubs` | The club they head: View members & events / Edit / Delete · + Add club |
+| Club view | `/faculty/clubs/:id` | Own club only: the same view its manager sees, + Edit club info |
 | Add / edit club | `/faculty/clubs/new`, `/faculty/clubs/:id/edit` | Name, category, supervising unit, description, student manager name |
-| Events | `/faculty/events` | Every event, filter by host and status, Registrations / Edit / Cancel, New event |
-| Users | `/faculty/users` | All accounts, filter by role, Add user, Edit (role, club assignment), Deactivate / Activate |
-| Announcements | `/faculty/announcements` | All announcements, New (university-wide or any club), Edit, Delete |
-| (shared) | `/manage/events/*`, `/manage/announcements/*` | Faculty use the same forms/registrations pages with full scope |
+| Events | `/events` (also `/faculty/events`) | Same staff Events page: own club's hosted events + university (unit) events + their announcements |
+| Users | `/faculty/users` | All accounts listed; Edit / Deactivate only for students and own club's managers; other faculty shown as "Protected"; Add user |
+| Announcements | `/faculty/announcements` | All announcements (read); New (university-wide or own club); Edit / Delete only their own club's and university-wide ones |
+| (shared) | `/manage/events/*`, `/manage/announcements/*` | Faculty use the same forms/registrations pages, limited to their own club + unit events |
+
+**Why staff get a scoped Events page instead of the student list:** staff can't register (the student page's main action), and they may only act on their own club's events (+ unit events for faculty). Showing exactly those, with Edit / Cancel / Registrations on every row and their announcements beside them, matches their permissions. Other clubs' events would be read-only noise. Club Managers and Faculty share one component, so the two staff roles behave the same.
 
 A logged-out visitor opening a role page is sent to that role's login (and returned afterwards). A logged-in user on another role's page sees **"Not available for your role"** with "Go to my dashboard" and "Switch role"; they never see the form or data.
 
@@ -124,7 +127,8 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 ### Club Manager
 | ID | Requirement |
 |---|---|
-| M1 | Sees only their own club's management info (dashboard, members, registrations, announcements). Another club's URLs are blocked. |
+| M1 | Sees only their own club's management info (dashboard, members, registrations, announcements). Another club's URLs, including another club's event page, are blocked. |
+| M6 | Navbar shows only **Manage club** and **Events**; `/`, `/clubs`, `/units` redirect to `/manage`; Events lists only the club's hosted events + announcements |
 | M2 | Club dashboard shows club info, members, upcoming events with seats filled, pending approvals |
 | M3 | Registrations page lists students; **Accept / Reject**. Events marked "needs approval" start registrations as Pending. Rejecting frees the seat; re-accepting needs a free seat. |
 | M5 | Create / edit / delete announcements for their own club; members see them on their dashboard |
@@ -141,15 +145,16 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | ID | Requirement |
 |---|---|
 | FA1 | Admin dashboard with system stats and links to all management areas |
-| O3f | Create / edit / cancel **any** event (any club or unit as host) and review any registrations |
+| O3f | Create / edit / cancel events of **the club they head** and **university/unit** events; other clubs' events are blocked |
 | C1 | Add a club (name, category, unit, description, manager name); appears on Clubs |
 | C2 | Invalid club form (empty field, duplicate name ignoring case) shows errors, creates nothing |
-| C3 | Edit any club; change visible on Clubs |
-| C4 | Delete any club after "Are you sure?" (dialog states how many events will be cancelled): club hidden, its upcoming events cancelled, memberships removed, its manager can no longer log in |
-| C6 | View any club's management view (`/faculty/clubs/:id`) |
-| U1 | Manage users: add (name, email, role, club for managers, temporary password), edit role / club assignment; emails unique |
-| U2 | Deactivate / reactivate a user after "Are you sure?"; a deactivated user can't log in and an open session ends; admins can't deactivate or demote themselves |
-| AN1 | University-wide announcements (all students) and announcements for any club |
+| C3 | Edit **their own** club; change visible on Clubs; other clubs' edit URLs blocked |
+| C4 | Delete **their own** club after "Are you sure?" (dialog states how many events will be cancelled): club hidden, upcoming events cancelled, memberships removed, its manager **and faculty head** can no longer log in |
+| C6 | View their own club's management view (`/faculty/clubs/:id`) |
+| U1 | Manage users: add students; add club managers **only for their own club**; add a faculty head only for a club without one; edit students / own club's managers; emails unique |
+| U2 | Deactivate / reactivate students and own club's managers after "Are you sure?"; a deactivated user can't log in and an open session ends; faculty can't deactivate or demote themselves |
+| U3 | A faculty member can **never edit or deactivate another faculty member's account** (shown as "Protected") |
+| AN1 | University-wide announcements (all students) and announcements for their own club |
 
 ### Whole site
 | ID | Requirement |
@@ -164,11 +169,11 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 **Event:** `id, title, category, date, time, venue, description, seatsTotal, seatsTaken, posterUrl, hostType (club|unit), hostId, status (active|cancelled), registrations (sample attendee names), requiresApproval?`
 **Club:** `id, name, category, description, memberCount (baseline), unitId, managerName`
 **Unit:** `id, name, description, facultyName`
-**User:** `id, name, email, password (demo), role (student|clubManager|faculty), clubId? (managers only), active`
+**User:** `id, name, email, password (demo), role (student|clubManager|faculty), clubId? (club managers: the club they manage; faculty: the club they head), active`
 **Announcement:** `id, clubId (null = university-wide), title, body, authorId, createdAt, updatedAt`
 **Registration:** `id, eventId, userId, status (confirmed|pending|rejected), createdAt`
 **Membership:** `userId, clubId, joinedAt` · **Follow:** `userId, unitId`
-**Session** (`campusconnect.session`): `{ userId, role, clubId? }`, re-validated against users on every load.
+**Session** (`campusconnect.session`): `{ userId, role, clubId? }` (clubId for managers and faculty), re-validated against users on every load.
 
 **localStorage keys:** `campusconnect.session`, `.registrations`, `.memberships`, `.follows`, `.eventChanges`, `.clubChanges`, `.userChanges`, `.announcementChanges`. The v1 keys `joinedClubs` and `followedUnits` are removed on load.
 
@@ -185,7 +190,7 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | Cancelled event | `esports-night` |
 | Needs approval (M3) | `battle-of-bands` (Music Club), `maker-tools-workshop` (Beyonder Studios) |
 | Search/register demo | `annual-dance-fest` (Dance Club) |
-| Accounts | 4 students, 1 manager per club (6), 2 faculty/admin: see `users.json` |
+| Accounts | 4 students, 1 manager per club (6), 1 faculty head per club (6; `admin@atria.edu` heads Dance, `meera.nair@` Music, `vikram.shah@` Hackathon…): see `users.json` |
 | Announcements | 1 university-wide, 1 Dance Club, 1 Music Club |
 
 Reset the demo: DevTools → Application → Local Storage → clear `campusconnect.*`.
@@ -215,17 +220,18 @@ Reset the demo: DevTools → Application → Local Storage → clear `campusconn
 11. Leaving lowers the count by one.
 
 **Permissions**
-12. Club Manager: create/edit/cancel only events hosted by their own club. Faculty/Admin: any event.
-13. Club Manager's new events are hosted by their club (locked). Faculty choose any club or unit.
+12. Club Manager: create/edit/cancel only events hosted by their own club. Faculty: events of the club they head + university/unit events. Nobody else's.
+13. Club Manager's new events are hosted by their club (locked). Faculty choose their own club or a unit.
 14. Event form: title, category from the list, date ≥ today, time, venue, description, seats ≥ 1.
 15. Seats can't go below seats already taken.
 16. Cancelling an event sets `status: cancelled`; it's never deleted.
 17. Access is checked from the session on every protected route and again inside pages that show one club's or event's private data.
-18. Only Faculty/Admin add/edit/delete clubs and manage users.
+18. Any faculty member may add a club; only its faculty head may edit or delete it. Only faculty manage users.
 19. Club name unique (case-insensitive); category, description, manager name required.
-20. Deleting a club hides it, cancels its **upcoming** events (past ones stay), removes memberships, and invalidates its manager's login.
-25. Announcements: Club Managers only for their own club; Faculty/Admin any club or university-wide. Title ≤ 80 chars and message required.
-26. Users: unique email (case-insensitive); managers must be assigned to an existing club; new accounts need a ≥ 6-char password; deactivated users can't log in; admins can't deactivate/demote themselves.
+20. Deleting a club hides it, cancels its **upcoming** events (past ones stay), removes memberships, and invalidates its manager's and faculty head's logins.
+25. Announcements: Club Managers only for their own club; Faculty for their own club or university-wide. Title ≤ 80 chars and message required.
+26. Users: unique email (case-insensitive); managers and faculty must be assigned to an existing club; a faculty member may only assign managers to their own club and new faculty heads to clubs without one; may edit/deactivate students and own-club managers only, **never another faculty member**; new accounts need a ≥ 6-char password; deactivated users can't log in; nobody can deactivate or demote themselves.
+27. Staff (Club Managers, Faculty) only see and open events they may manage; Club Managers have no Home / Clubs / Units pages and Faculty have no Units page.
 
 ## 8. Test case format
 

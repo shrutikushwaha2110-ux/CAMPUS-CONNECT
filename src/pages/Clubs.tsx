@@ -93,7 +93,7 @@ export function Clubs() {
                   canViewClubAdmin(session, club.id) ? (
                     <Link to={session.role === 'faculty' ? `/faculty/clubs/${club.id}` : '/manage'}
                       className="px-4 py-2 rounded-xl text-sm font-semibold border-[1.5px] border-primary text-primary hover:bg-primary-tint">Manage</Link>
-                  ) : <span className="text-xs" style={{ color: '#64748b' }}>Students only</span>
+                  ) : null
                 ) : (
                   <button
                     onClick={() => joined ? setLeaving({ id: club.id, name: club.name }) : handleJoin(club.id, club.name)}

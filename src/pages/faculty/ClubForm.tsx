@@ -1,4 +1,4 @@
-// /faculty/clubs/new and /faculty/clubs/:id/edit (C1, C2, C3)
+// /faculty/clubs/new (any faculty) and /faculty/clubs/:id/edit (own club only) (C1, C2, C3)
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAppData } from '../../state/AppData';
@@ -6,12 +6,14 @@ import type { AppClub } from '../../data/types';
 import { CLUB_CATEGORIES, type ClubCategory } from '../../lib/constants';
 import { validateClub, type Errors } from '../../lib/validation';
 import { Button, Card, EmptyState, Field, PageHeader, SelectInput, TextArea, TextInput, useToast } from '../../components/ui';
+import { NotAllowed } from '../../components/RequireRole';
+import { canEditClub } from '../../lib/permissions';
 
 export function ClubForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { clubs, units, saveClub, newId } = useAppData();
+  const { session, clubs, units, saveClub, newId } = useAppData();
   const existing = id ? clubs.find(c => c.id === id) : undefined;
   const [form, setForm] = useState({
     name: existing?.name ?? '',
@@ -23,6 +25,8 @@ export function ClubForm() {
   const [errors, setErrors] = useState<Errors>({});
 
   if (id && !existing) return <div className="max-w-[640px] mx-auto px-4 py-16"><EmptyState>Club not found.</EmptyState></div>;
+  // Rule 18: a faculty member edits only the club they head (typing another club's edit URL is blocked)
+  if (existing && !canEditClub(session, existing.id)) return <NotAllowed message="You can only edit the club you head." />;
 
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -42,7 +46,7 @@ export function ClubForm() {
       memberCount: existing?.memberCount ?? 0,
     };
     saveClub(club);
-    toast(existing ? `Saved ${club.name}` : `${club.name} added. Assign a manager account in Users.`);
+    toast(existing ? `Saved ${club.name}` : `${club.name} added. Assign its faculty head and club manager in Users.`);
     navigate('/faculty/clubs');
   };
 

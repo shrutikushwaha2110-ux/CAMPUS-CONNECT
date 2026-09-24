@@ -27,7 +27,7 @@ export function EventRegistrations() {
     rejected: regs.filter(r => r.status === 'rejected').length,
   };
   const earlierOthers = unnamedEarlierSeats(event.seatsTaken, event.registrations.length);
-  const back = session?.role === 'faculty' ? '/faculty/events' : '/manage';
+  const back = session?.role === 'faculty' ? '/events' : '/manage';
 
   const review = (regId: string, status: RegStatus, name: string) => {
     const err = reviewRegistration(regId, status);

@@ -1,13 +1,24 @@
 import { Link } from 'react-router';
 import { Logo } from './Logo';
+import { useSession } from '../hooks/useSession';
 
 export function Footer() {
-  const links = [
-    { label: 'Events', to: '/events' },
-    { label: 'Clubs', to: '/clubs' },
-    { label: 'Units', to: '/units' },
-    { label: 'Log in', to: '/login' },
-  ];
+  const { session } = useSession();
+  // Same sections as the navbar for each role (Club Managers: no Clubs/Units; Faculty: no Units)
+  const links =
+    session?.role === 'clubManager' ? [
+      { label: 'Manage club', to: '/manage' },
+      { label: 'Events', to: '/events' },
+    ] : session?.role === 'faculty' ? [
+      { label: 'Admin', to: '/faculty' },
+      { label: 'Events', to: '/events' },
+      { label: 'Clubs', to: '/clubs' },
+    ] : [
+      { label: 'Events', to: '/events' },
+      { label: 'Clubs', to: '/clubs' },
+      { label: 'Units', to: '/units' },
+      { label: session ? 'My dashboard' : 'Log in', to: session ? '/dashboard' : '/login' },
+    ];
 
   return (
     <footer style={{ backgroundColor: '#1C1750' }} className="mt-24">

@@ -78,7 +78,10 @@ async function mustLogin(slug, email, password) {
 }
 const asStudent = (email = 'shruti@student.atria.edu') => mustLogin('student', email, 'demo123');
 const asManager = (club = 'dance') => mustLogin('club-manager', `${club}.manager@atria.edu`, 'demo123');
-const asFaculty = () => mustLogin('faculty', 'admin@atria.edu', 'admin123');
+const asFaculty = () => mustLogin('faculty', 'admin@atria.edu', 'admin123'); // Dr. Farah Khan, head of Dance Club
+const asMusicHead = () => mustLogin('faculty', 'meera.nair@atria.edu', 'admin123'); // Prof. Meera Nair, head of Music Club
+const navLinks = () => page.$$eval('nav[aria-label=Main] a', as => as.map(a => a.innerText.trim()).filter(t => t && t !== 'CampusConnect' && t !== 'Log in'));
+const rowIds = () => page.$$eval('[data-event-row]', els => els.map(e => e.dataset.eventRow));
 async function shot(name, { fullPage = true, width } = {}) {
   if (width) await page.setViewport({ width, height: 812, deviceScaleFactor: 1 });
   await sleep(300);
@@ -298,7 +301,33 @@ try {
     return 'Music registrations, Music edit URL and /faculty/clubs all blocked';
   });
 
+  await test('M6', 'Club Manager sees only "Manage club" and "Events"', 'Log in as Music Club manager; check navbar, /, /clubs, /units, /events, a Dance event URL', 'Nav = Manage club + Events; other pages redirect to /manage; Events = only Music events + Music announcements', async () => {
+    await asManager('music');
+    const nav = await navLinks();
+    expect(nav.join('|') === 'Manage club|Events', `nav: ${nav}`);
+    const footer = await page.$$eval('footer a', as => as.map(a => a.innerText.trim()).filter(t => t && t !== 'CampusConnect'));
+    expect(footer.join('|') === 'Manage club|Events', `footer: ${footer}`);
+    const manage = await bodyText();
+    expect(['+ New event', '+ Announcement', 'Members', 'Upcoming events'].every(x => manage.includes(x)), 'manage club section incomplete');
+    await shot('14-music-manager-manage-club');
+    const redirects = [];
+    for (const h of ['#/', '#/clubs', '#/units']) { await go(h); redirects.push(`${h}→${await hash()}`); }
+    expect(redirects.every(r => r.endsWith('#/manage')), redirects.join(', '));
+    await go('#/events');
+    const title = await text('main h1');
+    const rows = await rowIds();
+    const ann = await text('[data-testid=announcements-list]');
+    expect(title === 'Music Club events' && rows.length > 0 && rows.every(r => ['open-mic-evening', 'battle-of-bands'].includes(r)), `${title} ${rows}`);
+    expect(ann.includes('Weekly jam night') && !ann.includes('Annual Dance Fest auditions') && !ann.includes('Welcome to CampusConnect'), ann);
+    await shot('15-music-manager-events');
+    await go('#/events/annual-dance-fest');
+    const blocked = !!(await page.$('[data-testid=not-allowed]'));
+    expect(blocked, 'Dance event page was visible to the Music manager');
+    return `Nav: "${nav.join('" + "')}"; ${redirects.join(', ')}; Events page "${title}" rows=${rows.join(', ')}; announcements = Music only; Dance event URL blocked`;
+  });
+
   await test('O2', 'Invalid event form creates nothing', 'Dance manager: seats 0 + past date', 'Errors shown, event not created', async () => {
+    await asManager('dance');
     await go('#/manage/events/new');
     await type('#title', 'Bad Event'); await type('#category', 'Workshop'); await type('#date', '2020-01-01');
     await type('#time', '18:00'); await type('#venue', 'Studio A'); await type('#description', 'x'); await type('#seats', '0');
@@ -316,17 +345,22 @@ try {
     await type('#time', '18:30'); await type('#venue', 'Studio A'); await type('#description', 'Beginner-friendly salsa social.'); await type('#seats', '40');
     const host = await page.$eval('#host', s => s.options[s.selectedIndex].text + (s.disabled ? ' (locked)' : ''));
     await page.$eval('[data-testid=event-form] button[type=submit]', b => b.click()); await sleep(500);
+    const staffList = await text('[data-testid=staff-events]');
+    await asStudent('sohail@student.atria.edu');
     await go('#/events?q=salsa');
     const t = await bodyText();
-    expect(t.includes('Salsa Social Night') && t.includes('by Dance Club'), 'not listed');
-    return `Host field: "${host}"; event listed on /events "by Dance Club"`;
+    expect(staffList.includes('Salsa Social Night') && t.includes('Salsa Social Night') && t.includes('by Dance Club'), 'not listed');
+    return `Host field: "${host}"; listed in the manager's Events section and on the student /events page "by Dance Club"`;
   });
 
-  await test('M5', 'Club Manager posts an announcement; members see it', 'Dance manager posts "Costume fitting"', 'Shruti (Dance member) sees it on her dashboard', async () => {
+  await test('M5', 'Club Manager posts an announcement; members see it', 'Dance manager posts "Costume fitting"', 'Shown in the manager\'s Events section; Shruti (Dance member) sees it on her dashboard', async () => {
+    await asManager('dance');
     await go('#/manage/announcements/new');
     const scope = await page.$eval('#scope', s => s.options[s.selectedIndex].text + (s.disabled ? ' (locked)' : ''));
     await type('#ann-title', 'Costume fitting'); await type('#ann-body', 'Fitting for Dance Fest on Saturday, 3 pm.');
     await page.$eval('[data-testid=announcement-form] button[type=submit]', b => b.click()); await sleep(400);
+    const inEvents = (await text('[data-testid=announcements-list]')).includes('Costume fitting');
+    expect(inEvents && (await hash()) === '#/events', 'not in the Events section');
     await asStudent();
     await go('#/dashboard');
     const ann = await text('[data-testid=my-announcements]');
@@ -363,13 +397,27 @@ try {
     return 'Stats tiles + 4 management areas shown';
   });
 
-  await test('O3', 'Faculty/Admin can edit any club’s event', 'Admin opens Music Club event edit, changes venue', 'Saved; student event page shows new venue', async () => {
-    await go('#/manage/events/open-mic-evening/edit');
-    await type('#venue', 'Open Air Theatre');
+  await test('O3f', 'Faculty head manages own club + university events only', 'Dr. Farah Khan (head of Dance): Events page; edit Dance Workshop; open Maker Tools (unit) and Open Mic (Music) edit URLs', 'Own + unit events only; Music edit blocked', async () => {
+    const nav = await navLinks();
+    expect(!nav.includes('Units'), `nav still has Units: ${nav}`);
+    await go('#/events');
+    const rows = await rowIds();
+    const other = ['open-mic-evening', 'battle-of-bands', 'football-cup', 'twenty-four-hour-hackathon', 'robotics-expo', 'literature-circle', 'esports-night'];
+    expect(rows.length > 0 && !rows.some(r => other.includes(r)) && rows.includes('maker-tools-workshop'), `rows: ${rows}`);
+    await shot('16-faculty-events');
+    await go('#/manage/events/dance-workshop/edit');
+    await type('#venue', 'Studio B');
     await page.$eval('[data-testid=event-form] button[type=submit]', b => b.click()); await sleep(400);
-    await go('#/events/open-mic-evening');
-    expect((await bodyText()).includes('Open Air Theatre'), 'venue not updated');
-    return 'Venue now "Open Air Theatre"';
+    await go('#/manage/events/maker-tools-workshop/edit');
+    const unitEditable = !!(await page.$('#venue'));
+    await go('#/manage/events/open-mic-evening/edit');
+    const musicBlocked = !!(await page.$('[data-testid=not-allowed]'));
+    await asStudent('sohail@student.atria.edu');
+    await go('#/events/dance-workshop');
+    const updated = (await bodyText()).includes('Studio B');
+    expect(unitEditable && musicBlocked && updated, `unit=${unitEditable} musicBlocked=${musicBlocked} updated=${updated}`);
+    await asFaculty();
+    return `Navbar: ${nav.join(', ')}; Events rows: ${rows.join(', ')}; Dance Workshop venue → Studio B (student sees it); unit event editable; Music event edit blocked`;
   });
 
   await test('C2', 'Duplicate club name is rejected', 'Admin adds club named "dance club"', 'Error, nothing created', async () => {
@@ -398,22 +446,32 @@ try {
     await page.$eval('[data-testid=club-form] button[type=submit]', b => b.click()); await sleep(400);
     await go('#/clubs');
     expect((await bodyText()).includes('Every style of dance, every week.'), 'not updated');
-    return 'Updated description visible';
+    await go('#/faculty/clubs/music-club/edit');
+    const musicBlocked = !!(await page.$('[data-testid=not-allowed]'));
+    await go('#/faculty/clubs');
+    const mine = await page.$$eval('[data-club-row]', els => els.map(e => e.dataset.clubRow));
+    expect(musicBlocked && mine.join() === 'dance-club', `musicBlocked=${musicBlocked} myClub=${mine}`);
+    await shot('17-faculty-my-club');
+    return 'Dance description updated; Music Club edit URL blocked; "My club" lists only Dance Club';
   });
 
-  await test('U1', 'Faculty/Admin creates a user and assigns a club manager', 'Create manager "Asha K" for Photography Club', 'Asha can log in and sees only Photography Club', async () => {
+  await test('U1', 'Faculty assigns accounts only within their scope', 'Dance head: Add user → Club Manager, then → Faculty; create faculty head "Asha K" for Photography Club', 'Managers: only Dance Club offered; faculty head: only clubs without a head; Asha manages Photography', async () => {
     await go('#/faculty/users');
     await click('+ Add user');
-    await type('#u-name', 'Asha K'); await type('#u-email', 'photo.manager@atria.edu'); await type('#u-role', 'clubManager');
-    await sleep(200);
+    await type('#u-role', 'clubManager'); await sleep(200);
+    const mgrClubs = await page.$$eval('#u-club option', os => os.map(o => o.text).filter(t => !t.startsWith('Select') && !t.startsWith('No club')));
+    await type('#u-role', 'faculty'); await sleep(200);
+    const headClubs = await page.$$eval('#u-club option', os => os.map(o => o.text).filter(t => !t.startsWith('Select') && !t.startsWith('No club')));
+    expect(mgrClubs.join() === 'Dance Club' && headClubs.join() === 'Photography Club', `mgr=${mgrClubs} head=${headClubs}`);
+    await type('#u-name', 'Asha K'); await type('#u-email', 'photo.head@atria.edu');
     const clubId = await page.$eval('#u-club', s => [...s.options].find(o => o.text === 'Photography Club').value);
     await type('#u-club', clubId); await type('#u-password', 'photo123');
     await page.$eval('[data-testid=user-form] button[type=submit]', b => b.click()); await sleep(400);
-    await shot('11-faculty-users');
-    await login('club-manager', 'photo.manager@atria.edu', 'photo123');
-    const title = await text('main h1');
-    expect(title === 'Photography Club', title);
-    return `Asha logged in → /manage shows "${title}"`;
+    await mustLogin('faculty', 'photo.head@atria.edu', 'photo123');
+    await go('#/faculty/clubs');
+    const mine = await page.$$eval('[data-club-row]', els => els.map(e => e.dataset.clubRow));
+    expect(mine.length === 1 && mine[0].startsWith('photography-club'), `${mine}`);
+    return `Club Manager → clubs offered: ${mgrClubs.join(', ')}; Faculty head → clubs offered: ${headClubs.join(', ')}; Asha logged in, "My club" = Photography Club`;
   });
 
   await test('U2', 'Deactivated user cannot log in', 'Admin deactivates Raju; Raju tries to log in', 'Error: account deactivated', async () => {
@@ -428,9 +486,25 @@ try {
     return `"${err}"`;
   });
 
-  // ---------- F17: deleted club disappears ----------
-  await test('F17', 'Deleted club disappears everywhere', 'Admin deletes Music Club (Shruti is a member)', 'Gone from /clubs and Shruti’s dashboard; its events cancelled; its manager can’t log in', async () => {
+  await test('U3', 'Faculty cannot edit or deactivate another faculty member', 'Dance head opens Users', 'Other faculty + other clubs\' managers show no Edit/Deactivate; own club manager and students do', async () => {
     await asFaculty();
+    await go('#/faculty/users');
+    const buttons = id => page.$$eval(`[data-user="${id}"] button`, bs => bs.map(b => b.innerText.trim()));
+    const vikram = await buttons('fac-vikram');
+    const meera = await buttons('fac-music');
+    const musicMgr = await buttons('mgr-music');
+    const danceMgr = await buttons('mgr-dance');
+    const student = await buttons('stu-sohail');
+    const protectedText = await text('[data-user="fac-vikram"] [data-protected]');
+    expect(vikram.length === 0 && meera.length === 0 && musicMgr.length === 0, `faculty/other buttons: ${vikram} ${meera} ${musicMgr}`);
+    expect(danceMgr.includes('Deactivate') && student.includes('Deactivate'), `dance=${danceMgr} student=${student}`);
+    await shot('11-faculty-users');
+    return `Dr. Vikram Shah: no buttons ("${protectedText}"); Prof. Meera Nair: none; Music manager: none; Dance manager: ${danceMgr.join('/')}; student: ${student.join('/')}`;
+  });
+
+  // ---------- F17: deleted club disappears ----------
+  await test('F17', 'Deleted club disappears everywhere', 'Music head (Prof. Meera Nair) deletes Music Club (Shruti is a member)', 'Gone from /clubs and Shruti’s dashboard; its events cancelled; its manager and head can’t log in', async () => {
+    await asMusicHead();
     await go('#/faculty/clubs');
     await page.evaluate(() => [...document.querySelectorAll('[data-club-row="music-club"] button')].find(b => b.innerText === 'Delete').click());
     await sleep(250);
@@ -447,9 +521,12 @@ try {
     await shot('12-student-dashboard-after-club-deleted');
     await login('club-manager', 'music.manager@atria.edu', 'demo123');
     const mgrErr = await text('[role=alert]');
-    expect(!onClubs && !myClubs.includes('Music Club') && bandsCancelled && /not assigned to an active club/.test(mgrErr),
-      `onClubs=${onClubs} myClubs="${myClubs}" cancelled=${bandsCancelled} mgr="${mgrErr}"`);
-    return `Dialog warned "${msg.match(/\d+<?\/?\w*>? upcoming|\d+ upcoming/)?.[0] ?? '2 upcoming'} event(s)"; not on /clubs; dashboard My clubs = Dance only; Battle of Bands shows cancelled; manager login refused`;
+    await login('faculty', 'meera.nair@atria.edu', 'admin123');
+    const headErr = await text('[role=alert]');
+    expect(!onClubs && !myClubs.includes('Music Club') && bandsCancelled && /not assigned to an active club/.test(mgrErr) && /not assigned to an active club/.test(headErr),
+      `onClubs=${onClubs} myClubs="${myClubs}" cancelled=${bandsCancelled} mgr="${mgrErr}" head="${headErr}"`);
+    const warned = msg.match(/(\d+)\s*upcoming/)?.[1] ?? '?';
+    return `Dialog warned ${warned} upcoming event(s); not on /clubs; Shruti's My clubs = Dance only; Battle of Bands cancelled; Music manager AND Music head logins refused`;
   });
 
   // ---------- whole site ----------
@@ -490,11 +567,11 @@ try {
     await asStudent(); await check('#/dashboard');
     await shot('13-mobile-student-dashboard', { width: 375 });
     await page.setViewport({ width: 375, height: 812, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-    await asManager('dance'); for (const h of ['#/manage', '#/manage/events/new', '#/manage/events/dance-workshop/registrations']) await check(h);
-    await asFaculty(); for (const h of ['#/faculty', '#/faculty/clubs', '#/faculty/events', '#/faculty/users', '#/faculty/announcements']) await check(h);
+    await asManager('dance'); for (const h of ['#/manage', '#/events', '#/manage/events/new', '#/manage/events/dance-workshop/registrations']) await check(h);
+    await asFaculty(); for (const h of ['#/faculty', '#/faculty/clubs', '#/events', '#/faculty/users', '#/faculty/announcements']) await check(h);
     await page.setViewport({ width: 1280, height: 860, deviceScaleFactor: 1 });
     expect(bad.length === 0, bad.join(', '));
-    return '17 routes checked at 375 px, all scrollWidth ≤ 375';
+    return '18 routes checked at 375 px, all scrollWidth ≤ 375';
   });
 
   await test('N2', 'Footer notice on every page', 'Visit main routes', '"Unofficial student project" everywhere', async () => {

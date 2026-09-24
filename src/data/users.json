@@ -11,6 +11,10 @@
   { "id": "mgr-esports", "name": "Kiran Patel", "email": "esports.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "esports-club", "active": true },
   { "id": "mgr-hackathon", "name": "Shreya Iyer", "email": "hackathon.manager@atria.edu", "password": "demo123", "role": "clubManager", "clubId": "hackathon-club", "active": true },
 
-  { "id": "fac-admin", "name": "Dr. Farah Khan", "email": "admin@atria.edu", "password": "admin123", "role": "faculty", "active": true },
-  { "id": "fac-vikram", "name": "Dr. Vikram Shah", "email": "vikram.shah@atria.edu", "password": "admin123", "role": "faculty", "active": true }
+  { "id": "fac-admin", "name": "Dr. Farah Khan", "email": "admin@atria.edu", "password": "admin123", "role": "faculty", "clubId": "dance-club", "active": true },
+  { "id": "fac-music", "name": "Prof. Meera Nair", "email": "meera.nair@atria.edu", "password": "admin123", "role": "faculty", "clubId": "music-club", "active": true },
+  { "id": "fac-literature", "name": "Dr. Priya Menon", "email": "priya.menon@atria.edu", "password": "admin123", "role": "faculty", "clubId": "literature-club", "active": true },
+  { "id": "fac-sports", "name": "Dr. Karthik Iyer", "email": "karthik.iyer@atria.edu", "password": "admin123", "role": "faculty", "clubId": "sports-club", "active": true },
+  { "id": "fac-esports", "name": "Dr. Ananya Rao", "email": "ananya.rao@atria.edu", "password": "admin123", "role": "faculty", "clubId": "esports-club", "active": true },
+  { "id": "fac-vikram", "name": "Dr. Vikram Shah", "email": "vikram.shah@atria.edu", "password": "admin123", "role": "faculty", "clubId": "hackathon-club", "active": true }
 ]

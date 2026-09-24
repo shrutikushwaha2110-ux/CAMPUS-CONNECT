@@ -10,21 +10,27 @@ export function Navbar() {
   const { session, currentUser, clubs, logout } = useAppData();
   const navigate = useNavigate();
 
-  // Links depend on the role (each role has its own dashboard)
-  const links = [
-    { label: 'Events', to: '/events' },
-    { label: 'Clubs', to: '/clubs' },
-    { label: 'Units', to: '/units' },
-    ...(session?.role === 'student' ? [{ label: 'My dashboard', to: '/dashboard' }] : []),
-    ...(session?.role === 'clubManager' ? [{ label: 'Manage club', to: '/manage' }] : []),
-    ...(session?.role === 'faculty'
-      ? [{ label: 'Admin', to: '/faculty' }, { label: 'Users', to: '/faculty/users' }]
-      : []),
-  ];
+  // Each role sees only the sections it needs (SPEC §2)
+  const links =
+    session?.role === 'clubManager' ? [
+      { label: 'Manage club', to: '/manage' },
+      { label: 'Events', to: '/events' },
+    ] : session?.role === 'faculty' ? [
+      { label: 'Admin', to: '/faculty' },
+      { label: 'My club', to: '/faculty/clubs' },
+      { label: 'Events', to: '/events' },
+      { label: 'Clubs', to: '/clubs' },
+      { label: 'Users', to: '/faculty/users' },
+    ] : [
+      { label: 'Events', to: '/events' },
+      { label: 'Clubs', to: '/clubs' },
+      { label: 'Units', to: '/units' },
+      ...(session?.role === 'student' ? [{ label: 'My dashboard', to: '/dashboard' }] : []),
+    ];
 
   const isActive = (to: string) => pathname === to || (to !== '/faculty' && pathname.startsWith(to + '/'));
 
-  const roleDetail = session?.role === 'clubManager'
+  const roleDetail = session?.clubId
     ? clubs.find(c => c.id === session.clubId)?.name
     : undefined;
 

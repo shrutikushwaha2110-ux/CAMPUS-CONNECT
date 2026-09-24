@@ -11,7 +11,7 @@ Events, clubs and units for Atria University, with **separate logins and dashboa
 npm install
 npm run dev          # http://localhost:5173
 npm test             # 108 unit tests (rules in src/lib)
-npm run test:e2e     # 34 real-browser scenarios for every role (uses your Chrome)
+npm run test:e2e     # 36 real-browser scenarios for every role (uses your Chrome)
 npm run test:hooks   # 9 test cases for the Claude Code hooks
 npm run build        # typecheck + production build → dist/
 npm run proof        # re-render the proof screenshots in docs/screenshots/deliverables
@@ -22,8 +22,8 @@ npm run proof        # re-render the proof screenshots in docs/screenshots/deliv
 | Role | Email | Password | Lands on |
 |---|---|---|---|
 | Student | shruti@student.atria.edu (also raju@, sohail@, ananya@) | demo123 | `/dashboard` |
-| Club Manager | dance.manager@atria.edu (also music., literature., sports., esports., hackathon.) | demo123 | `/manage` (own club only) |
-| Faculty / Admin | admin@atria.edu | admin123 | `/faculty` |
+| Club Manager | dance.manager@atria.edu (also music., literature., sports., esports., hackathon.) | demo123 | `/manage` (Manage club + Events only) |
+| Faculty (head of Dance Club) | admin@atria.edu (also meera.nair@ → Music, vikram.shah@ → Hackathon…) | admin123 | `/faculty` |
 
 Reset the demo: DevTools → Application → Local Storage → clear the `campusconnect.*` keys.
 

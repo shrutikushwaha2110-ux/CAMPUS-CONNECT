@@ -2,12 +2,12 @@
 
 Every result here was produced by actually running the check. Nothing is filled in from assumption.
 
-## Summary (latest run: 2026-09-23)
+## Summary (latest run: 2026-09-24, v2.1)
 
 | Suite | Command | What it covers | Result |
 |---|---|---|---|
 | Unit (Vitest) | `npm test` | Every rule in `src/lib/` (9 files) | **108 / 108 ✅** |
-| End-to-end (real Chrome) | `npm run test:e2e` | 34 scenarios across Student, Club Manager, Faculty/Admin, access, 375 px, reduced motion, no WebGL | **34 / 34 ✅**: full table in [`docs/E2E_RESULTS.md`](docs/E2E_RESULTS.md) |
+| End-to-end (real Chrome) | `npm run test:e2e` | 36 scenarios across Student, Club Manager, Faculty, access, 375 px, reduced motion, no WebGL | **36 / 36 ✅**: full table in [`docs/E2E_RESULTS.md`](docs/E2E_RESULTS.md) |
 | Hooks | `npm run test:hooks` | The two Claude Code hooks fire on the right events | **9 / 9 ✅** |
 | Build | `npm run build` | `tsc --noEmit` + Vite production build | **✅ passes** |
 
@@ -20,12 +20,23 @@ Screenshots taken during the e2e run are in `docs/screenshots/site/`. Proof imag
 | `seats.test.ts` | rules 2, 3, 7, 15 · F6, F11, O5, O7, O8 | 12 |
 | `registrations.test.ts` | rules 1, 3, 4, 6, 21–24 · F5a, M3 | 15 |
 | `memberships.test.ts` | rules 10, 10a, 11, 20 · F9, F9a, F17 | 9 |
-| `permissions.test.ts` | rules 12, 13, 17, 18, 25 · M1, O3, O4, C5 | 21 |
-| `validation.test.ts` | rules 14, 15, 19, 25, 26 · O2, O5, C1, C2, U1, M5 | 20 |
-| `auth.test.ts` | A1, U2, session re-validation | 10 |
+| `permissions.test.ts` | rules 12, 13, 17, 18, 25, 26 · M1, O3f, O4, C3–C5, U1, U3 | 19 |
+| `validation.test.ts` | rules 14, 15, 19, 25, 26 · O2, O5, C1, C2, U1, M5 | 21 |
+| `auth.test.ts` | A1, U2, faculty club in session, session re-validation | 11 |
 | `clubs.test.ts` | rule 20 · C4 | 4 |
 | `eventFilter.test.ts` | rules 8, 9 · F1–F3 | 13 |
 | `merge.test.ts` | SPEC §6 merge rule | 4 |
+
+## v2.1 changes (2026-09-24): tested in the real browser
+
+| Feature | Input tried | Expected | Actual | Pass/Fail |
+|---|---|---|---|---|
+| M6 Club Manager sections | Log in as **Music Club manager**; read navbar + footer; open `/`, `/clubs`, `/units`, `/events`, a Dance event URL | Only "Manage club" + "Events"; other pages → `/manage`; Events = Music events + Music announcements; Dance event blocked | Nav + footer = "Manage club", "Events"; `/`, `/clubs`, `/units` → `#/manage`; "Music Club events": open-mic-evening, battle-of-bands; announcements: "Weekly jam night" only; Dance event "Not available" | ✅ Pass |
+| O3f Faculty scope | Dr. Farah Khan (head of Dance): Events page; edit Dance Workshop venue; open Maker Tools and Open Mic edit URLs | Own club + unit events only; Music blocked | No "Units" in navbar; rows = Dance + unit events only; venue → Studio B (student sees it); unit edit form opens; Music edit "Not available" | ✅ Pass |
+| C3 Own club only | Edit Dance description; open Music edit URL; open "My club" | Dance saved; Music blocked; My club = Dance | as expected | ✅ Pass |
+| U1 Assignment scope | Add user → Club Manager / → Faculty | Managers: only Dance Club; new faculty head: only clubs without a head | Manager options: "Dance Club"; head options: "Photography Club"; Asha (new head) logs in → My club = Photography | ✅ Pass |
+| U3 Faculty protected | Dance head opens Users | No Edit/Deactivate on other faculty or other clubs' managers | Dr. Vikram Shah, Prof. Meera Nair, Music manager: no buttons ("Protected: faculty account"); Dance manager + students: Edit / Deactivate | ✅ Pass |
+| F17/C4 Delete own club | Prof. Meera Nair (head of Music) deletes Music Club | Gone everywhere; manager **and head** can't log in | Not on /clubs; Shruti's clubs = Dance; Battle of Bands cancelled; both logins refused | ✅ Pass |
 
 ## The two items that were "not run" in v1: now done
 

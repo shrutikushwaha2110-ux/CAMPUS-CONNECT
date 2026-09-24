@@ -52,7 +52,7 @@ export interface UserInput {
   password?: string; // required for new users
 }
 
-// U1: faculty manages users. Email unique (case-insensitive); a Club Manager must be assigned to an existing club.
+// U1: faculty manages users. Email unique (case-insensitive); Club Managers and Faculty must be assigned to an existing club.
 export function validateUser(
   input: UserInput,
   existing: Array<{ id: string; email: string }>,
@@ -64,7 +64,10 @@ export function validateUser(
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email';
   else if (existing.some(u => u.id !== input.id && u.email.toLowerCase() === email)) errors.email = 'Another account already uses this email';
   if (!['student', 'clubManager', 'faculty'].includes(input.role)) errors.role = 'Pick a role';
-  if (input.role === 'clubManager' && (!input.clubId || !liveClubIds.has(input.clubId))) errors.clubId = 'Assign the manager to a club';
+  // Club Managers manage one club; Faculty head one club (rule 26)
+  if ((input.role === 'clubManager' || input.role === 'faculty') && (!input.clubId || !liveClubIds.has(input.clubId))) {
+    errors.clubId = input.role === 'faculty' ? 'Assign the faculty member to the club they head' : 'Assign the manager to a club';
+  }
   if (!input.id && (!input.password || input.password.length < 6)) errors.password = 'Password must be at least 6 characters';
   return errors;
 }

@@ -9,7 +9,8 @@ import { ConfirmDialog, RegStatusPill, useToast } from '../components/ui';
 import { seatsLeft, seatStatus } from '../lib/seats';
 import { formatDate, getToday } from '../lib/date';
 import { registerBlockReason } from '../lib/registrations';
-import { canManageEvent } from '../lib/permissions';
+import { canManageEvent, isStaff } from '../lib/permissions';
+import { NotAllowed } from '../components/RequireRole';
 
 export function EventDetails() {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +34,11 @@ export function EventDetails() {
         <Link to="/events" className="text-sm font-semibold" style={{ color: '#4637D2' }}>← Back to events</Link>
       </div>
     );
+  }
+
+  // Staff only see the events they host (SPEC §2); students and visitors see every event
+  if (isStaff(session) && !canManageEvent(session, event)) {
+    return <NotAllowed message="Staff only see the events their own club hosts. This event belongs to another club." />;
   }
 
   const mine = myRegistration(event.id);

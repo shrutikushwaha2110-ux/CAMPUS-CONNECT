@@ -35,3 +35,15 @@ From there the manager can:
 
 ## Results
 2026-09-23 · Vitest 26/26 · e2e 9/9 · screenshots `05-manager-registrations-pending.png`, `06-manager-dashboard.png`, `07-manager-blocked-other-club.png`, `08-event-form-errors.png`.
+
+## v2.1 (2026-09-24): only two sections
+- Navbar **and footer** show only **Manage club** and **Events**. `/`, `/clubs`, `/units` redirect to `/manage` (`HideFor`).
+- **Manage club** (`/manage`): club info, stats, upcoming events (Registrations / Edit / Cancel), + New event, + Announcement, members.
+- **Events** (`/events` → `StaffEvents`): current hosted events, past & cancelled, and the club's announcements (Edit / Delete).
+- Opening another club's event page is blocked.
+
+| # | Type | Input | Expected | Actual | Pass/Fail |
+|---|---|---|---|---|---|
+| 36 | e2e M6 | **Music manager** logs in (your example) | nav/footer = Manage club + Events; redirects; Events = Music only | exactly that; Dance event URL "Not available" | ✅ |
+
+Screenshots: `14-music-manager-manage-club.png`, `15-music-manager-events.png`.

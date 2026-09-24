@@ -28,6 +28,10 @@ describe('validateUser (U1)', () => {
     expect(validateUser({ ...base, role: 'clubManager' }, users, live)).toHaveProperty('clubId');
     expect(validateUser({ ...base, role: 'clubManager', clubId: 'music-club' }, users, live)).toEqual({});
   });
+  it('a faculty member must head an existing club', () => {
+    expect(validateUser({ ...base, role: 'faculty' }, users, live)).toHaveProperty('clubId');
+    expect(validateUser({ ...base, role: 'faculty', clubId: 'music-club' }, users, live)).toEqual({});
+  });
   it('new users need a 6+ character password; edits do not', () => {
     expect(validateUser({ ...base, password: '123' }, users, live)).toHaveProperty('password');
     expect(validateUser({ ...base, id: 'stu-raju', email: 'raju@student.atria.edu', password: undefined }, users, live)).toEqual({});

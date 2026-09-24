@@ -28,3 +28,24 @@
 
 ## Results
 2026-09-23 · Vitest 13/13 · e2e 8/8 · screenshots `10-faculty-dashboard.png`, `11-faculty-users.png`, `12-student-dashboard-after-club-deleted.png`.
+
+## v2.1 (2026-09-24): each faculty member heads ONE club
+**Decisions (with Shruti):** faculty also manage university/unit events (units are run by faculty, not clubs; otherwise nobody could approve Maker Tools registrations). They can add any new club but edit/delete only their own. The admin dashboard is unchanged (campus-wide stats; its "Review" links only show for events they may manage).
+
+- Navbar: Admin · My club · Events · Clubs · Users (**Units removed**).
+- `/faculty/clubs` = **My club** (View / Edit / Delete) + "Add club". Other clubs' edit URLs are blocked.
+- `/events` = the same staff Events page as Club Managers: own club's events + unit events + own/university announcements.
+  **Why not the student list?** Faculty can't register, and they may only act on these events. Every row is one they can edit, cancel or review. The same component serves both staff roles.
+- Users: Edit / Deactivate students and their own club's managers only. **Other faculty are "Protected"** (no Edit / Deactivate). Club Managers can only be assigned to their own club; a new faculty head only to a club without one.
+- Deleting their own club logs out its manager **and** its head.
+
+| # | Type | Input | Expected | Actual | Pass/Fail |
+|---|---|---|---|---|---|
+| 22 | Vitest | 19 permission tests (scope, users, hosts) | as SPEC rule 26 | 19/19 | ✅ |
+| 23 | e2e O3f | Dance head: Events page, edit own / unit / Music event | own + unit only | as expected | ✅ |
+| 24 | e2e C3 | edit Music Club URL | blocked | "Not available" | ✅ |
+| 25 | e2e U1 | club options when adding a manager / faculty head | Dance only / clubs without head | "Dance Club" / "Photography Club" | ✅ |
+| 26 | e2e U3 | Users page as Dance head | other faculty protected | no buttons on Vikram, Meera, Music manager | ✅ |
+| 27 | e2e F17 | Music head deletes Music Club | gone; manager + head logins refused | as expected | ✅ |
+
+Screenshots: `11-faculty-users.png`, `16-faculty-events.png`, `17-faculty-my-club.png`.

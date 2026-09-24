@@ -1,5 +1,5 @@
 // /manage/announcements/new and /manage/announcements/:id/edit (M5, F-A1)
-// Club Managers post to their own club; Faculty/Admin can post university-wide or to any club.
+// Club Managers post to their own club; Faculty post university-wide or to the club they head.
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useAppData } from '../../state/AppData';
@@ -19,14 +19,14 @@ export function AnnouncementForm() {
 
   const defaultScope = existing
     ? existing.clubId ?? ''
-    : isFaculty ? (params.get('club') ?? '') : session?.clubId ?? '';
+    : isFaculty ? (params.get('club') === session?.clubId ? params.get('club')! : '') : session?.clubId ?? '';
   const [form, setForm] = useState({ title: existing?.title ?? '', body: existing?.body ?? '', scope: defaultScope });
   const [errors, setErrors] = useState<Errors>({});
 
   if (id && !existing) return <div className="max-w-[640px] mx-auto px-4 py-16"><EmptyState>Announcement not found.</EmptyState></div>;
   if (existing && !canManageAnnouncement(session, existing)) return <NotAllowed message="This announcement belongs to another club." />;
 
-  const back = isFaculty ? '/faculty/announcements' : '/manage';
+  const back = '/events';
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -49,7 +49,7 @@ export function AnnouncementForm() {
           <Field label="Audience" htmlFor="scope" error={errors.scope}>
             <SelectInput id="scope" value={form.scope} onChange={e => setForm(f => ({ ...f, scope: e.target.value }))} disabled={!isFaculty}>
               {isFaculty && <option value="">Everyone (university-wide)</option>}
-              {clubs.filter(c => isFaculty || c.id === session?.clubId).map(c => <option key={c.id} value={c.id}>{c.name} members</option>)}
+              {clubs.filter(c => c.id === session?.clubId).map(c => <option key={c.id} value={c.id}>{c.name} members</option>)}
             </SelectInput>
           </Field>
           <Field label="Title" htmlFor="ann-title" error={errors.title}>

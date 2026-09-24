@@ -16,10 +16,11 @@ import { FacultyHome } from '../pages/faculty/FacultyHome';
 import { ManageClubs } from '../pages/faculty/ManageClubs';
 import { ClubForm } from '../pages/faculty/ClubForm';
 import { FacultyClubDetail } from '../pages/faculty/FacultyClubDetail';
-import { FacultyEvents } from '../pages/faculty/FacultyEvents';
 import { ManageUsers } from '../pages/faculty/ManageUsers';
 import { FacultyAnnouncements } from '../pages/faculty/FacultyAnnouncements';
 import { RequireRole } from '../components/RequireRole';
+import { HideFor, ByRole } from '../components/StaffRoute';
+import { StaffEvents } from '../pages/manage/StaffEvents';
 import type { Role } from '../lib/constants';
 import type { ReactNode } from 'react';
 
@@ -35,16 +36,18 @@ export const router = createHashRouter([
     path: '/',
     Component: Root,
     children: [
-      { index: true, Component: Home },
-      { path: 'events', Component: Events },
+      // Staff don't browse the student discovery pages: Club Managers only have "Manage club" + "Events",
+      // Faculty have no Units page. /events shows staff only the events they host.
+      { index: true, element: <HideFor roles={STAFF}><Home /></HideFor> },
+      { path: 'events', element: <ByRole staff={<StaffEvents />} others={<Events />} /> },
       { path: 'events/:id', Component: EventDetails },
-      { path: 'clubs', Component: Clubs },
-      { path: 'units', Component: Units },
+      { path: 'clubs', element: <HideFor roles={['clubManager']}><Clubs /></HideFor> },
+      { path: 'units', element: <HideFor roles={STAFF}><Units /></HideFor> },
 
       // Student
       { path: 'dashboard', element: only(['student'], <Dashboard />) },
 
-      // Club Manager (own club) + Faculty (any): scope is re-checked inside each page
+      // Club Manager (own club) + Faculty (own club + unit events): scope is re-checked inside each page
       { path: 'manage', element: only(['clubManager'], <ManageHome />) },
       { path: 'manage/events/new', element: only(STAFF, <EventForm />) },
       { path: 'manage/events/:id/edit', element: only(STAFF, <EventForm />) },
@@ -58,7 +61,7 @@ export const router = createHashRouter([
       { path: 'faculty/clubs/new', element: only(['faculty'], <ClubForm />) },
       { path: 'faculty/clubs/:id', element: only(['faculty'], <FacultyClubDetail />) },
       { path: 'faculty/clubs/:id/edit', element: only(['faculty'], <ClubForm />) },
-      { path: 'faculty/events', element: only(['faculty'], <FacultyEvents />) },
+      { path: 'faculty/events', element: only(['faculty'], <StaffEvents />) },
       { path: 'faculty/users', element: only(['faculty'], <ManageUsers />) },
       { path: 'faculty/announcements', element: only(['faculty'], <FacultyAnnouncements />) },
 

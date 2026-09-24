@@ -1,16 +1,16 @@
 // Private management view of ONE club: info, members, events, registrations, announcements.
-// Used by the Club Manager dashboard (their own club only) and by Faculty/Admin (any club).
+// Used by the Club Manager dashboard and by the club's faculty head (/faculty/clubs/:id); both own club only.
 import { useMemo, useState } from 'react';
 import { useAppData } from '../../state/AppData';
-import { canViewClubAdmin } from '../../lib/permissions';
+import { canViewClubAdmin, canEditClub } from '../../lib/permissions';
 import { memberCount } from '../../lib/memberships';
 import { getToday, formatDate } from '../../lib/date';
 import { NotAllowed } from '../../components/RequireRole';
-import { AnnouncementsList, EventsTable } from '../../components/staff';
-import { ButtonLink, Card, EmptyState, PageHeader, Pill, Section, StatTile } from '../../components/ui';
+import { EventsTable } from '../../components/staff';
+import { ButtonLink, Card, EmptyState, PageHeader, Section, StatTile } from '../../components/ui';
 
 export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: string }) {
-  const { session, clubs, units, events, registrations, memberships, users, announcements } = useAppData();
+  const { session, clubs, units, events, registrations, memberships, users } = useAppData();
   const [showPast, setShowPast] = useState(false);
   const club = clubs.find(c => c.id === clubId);
   const today = getToday();
@@ -40,7 +40,6 @@ export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: st
   const pending = clubRegs.filter(r => r.status === 'pending').length;
   const members = memberships.filter(m => m.clubId === clubId);
   const unit = units.find(u => u.id === club.unitId);
-  const clubAnnouncements = announcements.filter(a => a.clubId === clubId);
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-12" data-testid="club-admin" data-club={clubId}>
@@ -51,6 +50,7 @@ export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: st
         actions={<>
           <ButtonLink to={`/manage/events/new?host=club:${clubId}`}>+ New event</ButtonLink>
           <ButtonLink variant="secondary" to={`/manage/announcements/new?club=${clubId}`}>+ Announcement</ButtonLink>
+          {canEditClub(session, clubId) && <ButtonLink variant="ghost" to={`/faculty/clubs/${clubId}/edit`}>Edit club info</ButtonLink>}
         </>}
       />
 
@@ -74,7 +74,7 @@ export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: st
         {showPast && <div className="mt-4"><EventsTable events={past} /></div>}
       </Section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div>
         <Section title={`Members (${memberCount(club, memberships)})`}>
           <Card className="p-4">
             {members.length === 0 ? (
@@ -96,9 +96,7 @@ export function ClubAdminView({ clubId, eyebrow }: { clubId: string; eyebrow: st
           </Card>
         </Section>
 
-        <Section title="Club announcements" action={<Pill tone="purple">Visible to members</Pill>}>
-          <AnnouncementsList items={clubAnnouncements} />
-        </Section>
+        <p className="text-sm text-text-muted">Your announcements and past/cancelled events are in the <a href="#/events" className="font-semibold text-primary">Events</a> section.</p>
       </div>
     </div>
   );

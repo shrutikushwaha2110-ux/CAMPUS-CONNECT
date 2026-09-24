@@ -16,8 +16,13 @@ describe('separate role logins (A1)', () => {
     expect(authenticate('dance.manager@atria.edu', 'demo123', 'clubManager', all, live))
       .toEqual({ ok: true, session: { userId: 'mgr-dance', role: 'clubManager', clubId: 'dance-club' } });
   });
-  it('faculty/admin logs in', () => {
-    expect(authenticate('ADMIN@atria.edu', 'admin123', 'faculty', all, live).ok).toBe(true);
+  it('faculty/admin logs in and the session carries the club they head', () => {
+    expect(authenticate('ADMIN@atria.edu', 'admin123', 'faculty', all, live))
+      .toEqual({ ok: true, session: { userId: 'fac-admin', role: 'faculty', clubId: 'dance-club' } });
+  });
+  it('a faculty head whose club was deleted cannot log in', () => {
+    const noMusic = new Set([...live].filter(id => id !== 'music-club'));
+    expect(authenticate('meera.nair@atria.edu', 'admin123', 'faculty', all, noMusic).ok).toBe(false);
   });
   it('wrong password is rejected', () => {
     expect(authenticate('admin@atria.edu', 'nope', 'faculty', all, live).ok).toBe(false);

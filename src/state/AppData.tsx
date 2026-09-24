@@ -17,6 +17,7 @@ import { initialStatus, localActiveCount, registerBlockReason, reviewBlockReason
 import { joinBlockReason } from '../lib/memberships';
 import { eventsToCancelOnDelete } from '../lib/clubs';
 import type { RegStatus } from '../lib/constants';
+import { canManageEvent, canEditClub, canAddClub, canDeleteClub, canManageAnnouncement, canEditUser, canDeactivateUser, isFaculty } from '../lib/permissions';
 
 interface AppData {
   // data
@@ -157,53 +158,74 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setFollows(prev => prev.filter(f => !(f.userId === session.userId && f.unitId === unitId)));
   }, [session]);
 
+  // Every staff action re-checks permissions here too (rule 17), so a page bug can't bypass them
   const saveEvent = useCallback((event: AppEvent) => {
+    const before = events.find(e => e.id === event.id);
+    if (!canManageEvent(session, event) || (before && !canManageEvent(session, before))) return;
     setEventChanges(prev => withChange(prev, event.id, event));
-  }, []);
+  }, [events, session]);
 
   // Rule 16: cancelled, never deleted, so registered students still see it
   const cancelEvent = useCallback((eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    if (!event || !canManageEvent(session, event)) return;
     setEventChanges(prev => withChange(prev, eventId, { status: 'cancelled' }));
-  }, []);
+  }, [events, session]);
 
   const reviewRegistration = useCallback((regId: string, status: RegStatus) => {
     const reg = registrations.find(r => r.id === regId);
     const event = reg && events.find(e => e.id === reg.eventId);
     if (!reg || !event) return 'not-found';
+    if (!canManageEvent(session, event)) return 'forbidden';
     const block = reviewBlockReason(event, reg, status, registrations);
     if (block) return block;
     setRegistrations(prev => prev.map(r => (r.id === regId ? { ...r, status } : r)));
     return null;
-  }, [registrations, events]);
+  }, [registrations, events, session]);
 
   const saveClub = useCallback((club: AppClub) => {
+    const exists = clubs.some(c => c.id === club.id);
+    if (exists ? !canEditClub(session, club.id) : !canAddClub(session)) return;
     setClubChanges(prev => withChange(prev, club.id, club));
-  }, []);
+  }, [clubs, session]);
 
   // Rule 20: mark deleted, cancel upcoming events, drop memberships
   const deleteClub = useCallback((clubId: string) => {
+    if (!canDeleteClub(session, clubId)) return;
     const toCancel = eventsToCancelOnDelete(clubId, events, getToday());
     setClubChanges(prev => withChange(prev, clubId, { _deleted: true }));
     setEventChanges(prev => toCancel.reduce((acc, id) => withChange(acc, id, { status: 'cancelled' }), prev));
     setMemberships(prev => prev.filter(m => m.clubId !== clubId));
-  }, [events]);
+  }, [events, session]);
 
   const saveAnnouncement = useCallback((a: Omit<Announcement, 'id' | 'createdAt' | 'updatedAt' | 'authorId'> & { id?: string }) => {
     const now = new Date().toISOString();
+    const before = a.id ? announcements.find(x => x.id === a.id) : undefined;
+    if (!canManageAnnouncement(session, a) || (before && !canManageAnnouncement(session, before))) return;
     setAnnChanges(prev => {
       if (a.id) return withChange(prev, a.id, { title: a.title, body: a.body, clubId: a.clubId, updatedAt: now });
       const id = makeId(`ann-${a.title}`);
       return withChange(prev, id, { ...a, id, authorId: session?.userId ?? 'unknown', createdAt: now, updatedAt: now });
     });
-  }, [session]);
+  }, [session, announcements]);
 
   const deleteAnnouncement = useCallback((id: string) => {
+    const a = announcements.find(x => x.id === id);
+    if (!a || !canManageAnnouncement(session, a)) return;
     setAnnChanges(prev => withChange(prev, id, { _deleted: true }));
-  }, []);
+  }, [session, announcements]);
 
+  // Rule 26: new accounts by any faculty; existing ones only if this faculty member may edit them
   const saveUser = useCallback((u: User) => {
+    const before = users.find(x => x.id === u.id);
+    const actor = session && { ...session };
+    if (!isFaculty(actor)) return;
+    if (before) {
+      if (!canEditUser(actor, before)) return;
+      if (before.active !== u.active && !canDeactivateUser(actor, before)) return;
+    }
     setUserChanges(prev => withChange(prev, u.id, u));
-  }, []);
+  }, [users, session]);
 
   const value: AppData = {
     session, currentUser, users, events, clubs, units, registrations,
