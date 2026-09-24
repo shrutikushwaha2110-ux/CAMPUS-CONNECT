@@ -23,9 +23,9 @@ npm run proof        # re-render the proof screenshots in docs/screenshots/deliv
 
 | Role | Email | Password | Lands on |
 |---|---|---|---|
-| Student | shruti@student.atria.edu (also raju@, sohail@, ananya@) | demo123 | `/dashboard` |
-| Club Manager | dance.manager@atria.edu (also music., literature., sports., esports., hackathon.) | demo123 | `/manage` (Manage club + Events only) |
-| Faculty (head of Dance Club) | admin@atria.edu (also meera.nair@ → Music, vikram.shah@ → Hackathon…) | admin123 | `/faculty` |
+| Student | shruti@atria.edu.in (also raju@, sohail@, ananya@) | demo123 | `/dashboard` |
+| Club Manager | dance.manager@atria.edu.in (also music., literature., sports., esports., hackathon.) | demo123 | `/manage` (Manage club + Events only) |
+| Faculty (head of Dance Club) | admin@atria.edu.in (also meera.nair@ → Music, vikram.shah@ → Hackathon…) | admin123 | `/faculty` |
 
 **New users:** click **Create an account** on `/#/login` (or "Sign up" on any login page). Students can log in straight away; Club Manager / Faculty sign-ups appear under **Users → Sign-up requests** for approval.
 

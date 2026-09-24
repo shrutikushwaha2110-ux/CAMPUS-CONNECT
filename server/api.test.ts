@@ -37,7 +37,7 @@ function client() {
   };
 }
 
-const signup = { name: 'Neha Rao', email: 'neha@student.atria.edu', password: 'campus2026', confirm: 'campus2026', role: 'student' };
+const signup = { name: 'Neha Rao', email: 'neha@atria.edu.in', password: 'campus2026', confirm: 'campus2026', role: 'student' };
 
 describe('credentials are stored safely (SU4)', () => {
   it('seed passwords are hashed with scrypt, never stored in plain text', () => {
@@ -47,12 +47,12 @@ describe('credentials are stored safely (SU4)', () => {
   });
   it('the API never returns password hashes', async () => {
     const fac = client();
-    await fac.login('admin@atria.edu', 'admin123', 'faculty');
+    await fac.login('admin@atria.edu.in', 'admin123', 'faculty');
     expect(JSON.stringify(await fac.state())).not.toContain('scrypt$');
   });
   it('session cookie is httpOnly and the DB stores only its hash', async () => {
     const c = client();
-    const res = await c.login('shruti@student.atria.edu', 'demo123', 'student');
+    const res = await c.login('shruti@atria.edu.in', 'demo123', 'student');
     expect(res.setCookie).toMatch(/HttpOnly/i);
     const token = res.setCookie!.split(';')[0].split('=')[1];
     const stored = db.prepare('SELECT token_hash FROM sessions').all() as Array<{ token_hash: string }>;
@@ -65,28 +65,40 @@ describe('sign up and log in later (SU1)', () => {
     const c = client();
     const res = await c.call('POST', '/auth/signup', signup);
     expect(res.body).toEqual({ ok: true, status: 'approved' });
-    expect((await c.state()).currentUser.email).toBe('neha@student.atria.edu');
+    expect((await c.state()).currentUser.email).toBe('neha@atria.edu.in');
     await c.call('POST', '/auth/logout');
     expect((await c.state()).session).toBeNull();
-    const again = await c.login('NEHA@student.atria.edu', 'campus2026', 'student');
+    const again = await c.login('NEHA@atria.edu.in', 'campus2026', 'student');
     expect(again.status).toBe(200);
     expect((await c.state()).currentUser.name).toBe('Neha Rao');
   });
   it('the account survives a restart (it is in the database)', async () => {
     await client().call('POST', '/auth/signup', signup);
-    const row = db.prepare('SELECT role, status FROM users WHERE email = ?').get('neha@student.atria.edu');
+    const row = db.prepare('SELECT role, status FROM users WHERE email = ?').get('neha@atria.edu.in');
     expect(row).toEqual({ role: 'student', status: 'approved' });
   });
   it('duplicate email and weak password are refused', async () => {
-    const dup = await client().call('POST', '/auth/signup', { ...signup, email: 'Shruti@student.atria.edu' });
+    const dup = await client().call('POST', '/auth/signup', { ...signup, email: 'Shruti@atria.edu.in' });
     expect(dup.status).toBe(400);
     expect(dup.body.errors).toHaveProperty('email');
     const weak = await client().call('POST', '/auth/signup', { ...signup, email: 'x@y.edu', password: 'abc', confirm: 'abc' });
     expect(weak.body.errors).toHaveProperty('password');
   });
+  it('SU5: the server refuses non-Atria emails even if the page is bypassed', async () => {
+    for (const email of ['neha@gmail.com', 'neha@atria.edu', 'neha@atria.edu.in.evil.com']) {
+      const r = await client().call('POST', '/auth/signup', { ...signup, email });
+      expect(r.status, email).toBe(400);
+      expect(r.body.errors.email).toMatch(/@atria\.edu\.in/);
+    }
+    const f = client();
+    await f.login('admin@atria.edu.in', 'admin123', 'faculty');
+    const created = await f.call('PUT', '/users/outsider-1', { name: 'Out Sider', email: 'out@yahoo.com', role: 'student', password: 'secret1' });
+    expect(created.status).toBe(400);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM users WHERE email NOT LIKE '%@atria.edu.in'").get() as { n: number }).n).toBe(0);
+  });
   it('wrong password gets the same message as an unknown email', async () => {
-    const a = await client().login('shruti@student.atria.edu', 'wrong', 'student');
-    const b = await client().login('nobody@atria.edu', 'wrong', 'student');
+    const a = await client().login('shruti@atria.edu.in', 'wrong', 'student');
+    const b = await client().login('nobody@atria.edu.in', 'wrong', 'student');
     expect(a.status).toBe(401);
     expect(a.body.error).toBe(b.body.error);
   });
@@ -94,35 +106,35 @@ describe('sign up and log in later (SU1)', () => {
 
 describe('staff sign-ups need approval (SU2, SU3)', () => {
   it('club-manager sign-up is pending until that club’s faculty head approves', async () => {
-    const res = await client().call('POST', '/auth/signup', { ...signup, email: 'new.dance@atria.edu', role: 'clubManager', clubId: 'dance-club' });
+    const res = await client().call('POST', '/auth/signup', { ...signup, email: 'new.dance@atria.edu.in', role: 'clubManager', clubId: 'dance-club' });
     expect(res.body.status).toBe('pending');
-    const early = await client().login('new.dance@atria.edu', 'campus2026', 'clubManager');
+    const early = await client().login('new.dance@atria.edu.in', 'campus2026', 'clubManager');
     expect(early.status).toBe(403);
     expect(early.body.error).toMatch(/waiting for approval/);
 
     const musicHead = client();
-    await musicHead.login('meera.nair@atria.edu', 'admin123', 'faculty');
-    const pendingId = (await musicHead.state()).users.find((u: { email: string }) => u.email === 'new.dance@atria.edu').id;
+    await musicHead.login('meera.nair@atria.edu.in', 'admin123', 'faculty');
+    const pendingId = (await musicHead.state()).users.find((u: { email: string }) => u.email === 'new.dance@atria.edu.in').id;
     expect((await musicHead.call('POST', `/users/${pendingId}/review`, { decision: 'approve' })).status).toBe(403);
 
     const danceHead = client();
-    await danceHead.login('admin@atria.edu', 'admin123', 'faculty');
+    await danceHead.login('admin@atria.edu.in', 'admin123', 'faculty');
     expect((await danceHead.call('POST', `/users/${pendingId}/review`, { decision: 'approve' })).status).toBe(200);
     const later = client();
-    expect((await later.login('new.dance@atria.edu', 'campus2026', 'clubManager')).status).toBe(200);
+    expect((await later.login('new.dance@atria.edu.in', 'campus2026', 'clubManager')).status).toBe(200);
     expect((await later.state()).session.clubId).toBe('dance-club');
   });
   it('faculty sign-up can only request a club without a head; a declined request cannot log in', async () => {
-    const taken = await client().call('POST', '/auth/signup', { ...signup, email: 'f@atria.edu', role: 'faculty', clubId: 'dance-club' });
+    const taken = await client().call('POST', '/auth/signup', { ...signup, email: 'f@atria.edu.in', role: 'faculty', clubId: 'dance-club' });
     expect(taken.body.errors).toHaveProperty('clubId');
     const head = client();
-    await head.login('admin@atria.edu', 'admin123', 'faculty');
+    await head.login('admin@atria.edu.in', 'admin123', 'faculty');
     await head.call('PUT', '/clubs/photo-club', { name: 'Photo Club', category: 'Arts & Culture', description: 'Photos', unitId: 'beyonder-studios', managerName: 'Asha' });
-    const req = await client().call('POST', '/auth/signup', { ...signup, email: 'f@atria.edu', role: 'faculty', clubId: 'photo-club' });
+    const req = await client().call('POST', '/auth/signup', { ...signup, email: 'f@atria.edu.in', role: 'faculty', clubId: 'photo-club' });
     expect(req.body.status).toBe('pending');
-    const id = (await head.state()).users.find((u: { email: string }) => u.email === 'f@atria.edu').id;
+    const id = (await head.state()).users.find((u: { email: string }) => u.email === 'f@atria.edu.in').id;
     await head.call('POST', `/users/${id}/review`, { decision: 'decline' });
-    const r = await client().login('f@atria.edu', 'campus2026', 'faculty');
+    const r = await client().login('f@atria.edu.in', 'campus2026', 'faculty');
     expect(r.body.error).toMatch(/declined/);
   });
 });
@@ -131,21 +143,21 @@ describe('the server enforces the rules, not just the pages', () => {
   it('logged-out and student requests to staff endpoints are refused', async () => {
     expect((await client().call('POST', '/events/open-mic-evening/cancel')).status).toBe(401);
     const s = client();
-    await s.login('shruti@student.atria.edu', 'demo123', 'student');
+    await s.login('shruti@atria.edu.in', 'demo123', 'student');
     expect((await s.call('POST', '/events/open-mic-evening/cancel')).status).toBe(403);
   });
   it('a Dance manager cannot cancel a Music event; a faculty head cannot deactivate another faculty', async () => {
     const m = client();
-    await m.login('dance.manager@atria.edu', 'demo123', 'clubManager');
+    await m.login('dance.manager@atria.edu.in', 'demo123', 'clubManager');
     expect((await m.call('POST', '/events/open-mic-evening/cancel')).status).toBe(403);
     const f = client();
-    await f.login('admin@atria.edu', 'admin123', 'faculty');
+    await f.login('admin@atria.edu.in', 'admin123', 'faculty');
     expect((await f.call('PATCH', '/users/fac-vikram/active', { active: false })).status).toBe(403);
     expect((await f.call('PATCH', '/users/stu-raju/active', { active: false })).status).toBe(200);
   });
   it('2-club limit and full events are enforced by the server', async () => {
     const s = client();
-    await s.login('shruti@student.atria.edu', 'demo123', 'student');
+    await s.login('shruti@atria.edu.in', 'demo123', 'student');
     await s.call('POST', '/clubs/dance-club/membership');
     await s.call('POST', '/clubs/music-club/membership');
     const third = await s.call('POST', '/clubs/sports-club/membership');
@@ -155,10 +167,10 @@ describe('the server enforces the rules, not just the pages', () => {
   });
   it('students only see their own registrations; seat counts stay correct', async () => {
     const a = client();
-    await a.login('shruti@student.atria.edu', 'demo123', 'student');
+    await a.login('shruti@atria.edu.in', 'demo123', 'student');
     await a.call('POST', '/events/open-mic-evening/registration');
     const b = client();
-    await b.login('raju@student.atria.edu', 'demo123', 'student');
+    await b.login('raju@atria.edu.in', 'demo123', 'student');
     const st = await b.state();
     expect(st.registrations).toEqual([]);
     expect(st.seatCounts['open-mic-evening']).toBe(1);
@@ -166,9 +178,9 @@ describe('the server enforces the rules, not just the pages', () => {
   });
   it('deactivating a user ends their open session', async () => {
     const s = client();
-    await s.login('raju@student.atria.edu', 'demo123', 'student');
+    await s.login('raju@atria.edu.in', 'demo123', 'student');
     const f = client();
-    await f.login('admin@atria.edu', 'admin123', 'faculty');
+    await f.login('admin@atria.edu.in', 'admin123', 'faculty');
     await f.call('PATCH', '/users/stu-raju/active', { active: false });
     expect((await s.state()).session).toBeNull();
   });

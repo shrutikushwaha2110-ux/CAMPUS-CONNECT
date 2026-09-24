@@ -46,6 +46,9 @@ export const HOST_TYPES = {
 
 export const ALMOST_FULL_THRESHOLD = 5;
 
+// SU5: every account uses an Atria email: name@atria.edu.in
+export const ACCOUNT_EMAIL_DOMAIN = 'atria.edu.in';
+
 // Rule 10a: a student may be a member of at most this many clubs at once
 export const MAX_CLUBS_PER_STUDENT = 2;
 

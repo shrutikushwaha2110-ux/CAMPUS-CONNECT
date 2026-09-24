@@ -104,6 +104,7 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | SU1 | Anyone can create an account at `/signup` (name, email, password 8+ chars with letters and numbers, typed twice, role, club for staff). Email must be unique. A new Student is logged in straight away and can log in again later with the same email + password |
 | SU2 | Club Manager / Faculty sign-ups are **pending**: login is refused with "waiting for approval" until a faculty member approves them in Users → Sign-up requests (Club Manager: that club's head; Faculty: any faculty, for a club with no head) |
 | SU3 | A declined sign-up cannot log in |
+| SU5 | Every account email must end with **`@atria.edu.in`** (checked in the sign-up form, the Users form and again by the server; case-insensitive; look-alikes such as `@atria.edu.in.com` are refused) |
 | SU4 | Passwords are stored only as salted hashes; the API never sends passwords or hashes to the browser; wrong email and wrong password give the same message |
 
 ### Student
@@ -196,7 +197,7 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | Cancelled event | `esports-night` |
 | Needs approval (M3) | `battle-of-bands` (Music Club), `maker-tools-workshop` (Beyonder Studios) |
 | Search/register demo | `annual-dance-fest` (Dance Club) |
-| Accounts | 4 students, 1 manager per club (6), 1 faculty head per club (6; `admin@atria.edu` heads Dance, `meera.nair@` Music, `vikram.shah@` Hackathon…): see `users.json` |
+| Accounts | 4 students, 1 manager per club (6), 1 faculty head per club (6; `admin@atria.edu.in` heads Dance, `meera.nair@` Music, `vikram.shah@` Hackathon…): see `users.json` |
 | Announcements | 1 university-wide, 1 Dance Club, 1 Music Club |
 
 Reset the demo: `npm run db:reset` (wipes the database and re-seeds it; all sign-ups are lost).

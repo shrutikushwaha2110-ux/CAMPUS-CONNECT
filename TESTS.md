@@ -6,7 +6,7 @@ Every result here was produced by actually running the check. Nothing is filled 
 
 | Suite | Command | What it covers | Result |
 |---|---|---|---|
-| Unit + API (Vitest) | `npm test` | Every rule in `src/lib/` + 14 API tests (real Express app, real SQLite DB in memory) | **127 / 127 ✅** |
+| Unit + API (Vitest) | `npm test` | Every rule in `src/lib/` + 15 API tests (real Express app, real SQLite DB in memory) | **131 / 131 ✅** |
 | End-to-end (real Chrome) | `npm run test:e2e` | 40 scenarios: sign-up + later login, staff approval, every role, access, 375 px, reduced motion, no WebGL (real server, temporary DB) | **40 / 40 ✅**: full table in [`docs/E2E_RESULTS.md`](docs/E2E_RESULTS.md) |
 | Hooks | `npm run test:hooks` | The two Claude Code hooks fire on the right events | **9 / 9 ✅** |
 | Build | `npm run build` | `tsc --noEmit` + Vite production build | **✅ passes** |
@@ -31,9 +31,10 @@ Screenshots taken during the e2e run are in `docs/screenshots/site/`. Proof imag
 
 | Feature | Input tried | Expected | Actual | Pass/Fail |
 |---|---|---|---|---|
-| SU1 Sign up + later login | Browser: sign up "Neha Rao" neha@student.atria.edu / campus2026, log out, log in on /login/student | Dashboard both times | "#/dashboard Hi, Neha" after sign-up and after the later login | ✅ Pass |
+| SU1 Sign up + later login | Browser: sign up "Neha Rao" neha@atria.edu.in / campus2026, log out, log in on /login/student | Dashboard both times | "#/dashboard Hi, Neha" after sign-up and after the later login | ✅ Pass |
 | SU1 Bad input | Existing email, "abc" password, mismatched confirm | Field errors, no account | Browser: password + confirm errors; server: "An account with this email already exists. Log in instead." | ✅ Pass |
 | SU2 Staff approval | Sign up Kabir as Dance Club manager; log in; Music head opens Users; Dance head approves | Pending, refused, only Dance head can approve, then login works | "Request sent … waiting for approval"; login refused; Music head: no Approve button; after approval Kabir lands on "Dance Club" | ✅ Pass |
+| SU5 Atria email only | Sign-up with `copy.cat@gmail.com` in the browser; API sign-ups with `@gmail.com`, `@atria.edu`, `@atria.edu.in.evil.com`; faculty creating `out@yahoo.com` | Refused everywhere | Browser: "Use your Atria email ending in @atria.edu.in"; API: 400 for all three + the faculty-created one; DB has 0 non-Atria emails. Vitest: 8 look-alikes rejected, `Neha.Rao@ATRIA.EDU.IN` accepted | ✅ Pass |
 | SU4 Secrets | Faculty loads /api/state | No passwords / hashes | No password fields or hashes in the response | ✅ Pass |
 | SU4 Storage | Inspect `server/data/campusconnect.db` after a browser sign-up | Hash, not the password | `password_hash = scrypt$16384$e7b1…`; 9 tables | ✅ Pass |
 | API (Vitest) | 14 HTTP tests: hashing, httpOnly cookie + hashed token, sign-up→logout→login, duplicate/weak, same error for wrong email/password, pending/decline, 401/403 on staff routes, Dance manager vs Music event, faculty vs faculty, 2-club limit + full event on the server, students see only their own registrations, deactivation ends session | as SPEC | 14/14 | ✅ Pass |
@@ -61,7 +62,7 @@ Screenshots taken during the e2e run are in `docs/screenshots/site/`. Proof imag
 
 | Feature | Input tried | Expected | Actual | Pass/Fail |
 |---|---|---|---|---|
-| A1 Club manager login | `/login/club-manager`, dance.manager@atria.edu / demo123 | Lands on Dance Club dashboard | `#/manage`, title "Dance Club", stats Members 128 / Upcoming 2 | ✅ |
+| A1 Club manager login | `/login/club-manager`, dance.manager@atria.edu.in / demo123 | Lands on Dance Club dashboard | `#/manage`, title "Dance Club", stats Members 128 / Upcoming 2 | ✅ |
 | M1 Other club URL | as Dance manager open `/manage/events/open-mic-evening/registrations` | Blocked | "Not available for your role … These registrations belong to another club." | ✅ |
 | R17 Faculty page | as Dance manager open `/faculty` | Blocked | "Not available … only for Faculty / Admin" | ✅ |
 | v1 rows | Search, filters, register/cancel, full/last seat, 404, units, 375 px (35 checks) | as SPEC | All passed on 2026-09-23 (v1 log, still valid: same pages) | ✅ |

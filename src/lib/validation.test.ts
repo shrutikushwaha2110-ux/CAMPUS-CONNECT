@@ -1,17 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import clubs from '../data/clubs.json';
 import users from '../data/users.json';
-import { validateEvent, validateClub, validateAnnouncement, validateUser, validateSignup, type EventInput } from './validation';
+import { validateEvent, validateClub, validateAnnouncement, validateUser, validateSignup, isAtriaEmail, type EventInput } from './validation';
+
+describe('Atria email only (SU5)', () => {
+  it('accepts name@atria.edu.in in any letter case', () => {
+    expect(isAtriaEmail('neha@atria.edu.in')).toBe(true);
+    expect(isAtriaEmail('  Neha.Rao@ATRIA.EDU.IN ')).toBe(true);
+  });
+  it('rejects other domains and look-alikes', () => {
+    for (const e of ['neha@gmail.com', 'neha@atria.edu', 'neha@student.atria.edu.in', 'neha@atria.edu.in.com', 'neha@xatria.edu.in', 'atria.edu.in', '@atria.edu.in', 'ne ha@atria.edu.in']) {
+      expect(isAtriaEmail(e), e).toBe(false);
+    }
+  });
+  it('sign-up and faculty-created accounts both enforce it', () => {
+    const live = new Set(clubs.map(c => c.id));
+    expect(validateSignup({ name: 'X', email: 'x@gmail.com', password: 'campus2026', confirm: 'campus2026', role: 'student' }, users, live, new Set()).email).toMatch(/@atria\.edu\.in/);
+    expect(validateUser({ name: 'X', email: 'x@gmail.com', role: 'student', password: 'secret1' }, users, live).email).toMatch(/@atria\.edu\.in/);
+  });
+});
 
 describe('validateSignup (SU1)', () => {
   const live = new Set(clubs.map(c => c.id));
   const open = new Set(['sports-club']);
-  const ok = { name: 'Neha Rao', email: 'neha@student.atria.edu', password: 'campus2026', confirm: 'campus2026', role: 'student' };
+  const ok = { name: 'Neha Rao', email: 'neha@atria.edu.in', password: 'campus2026', confirm: 'campus2026', role: 'student' };
   it('accepts a valid student sign-up', () => {
     expect(validateSignup(ok, users, live, open)).toEqual({});
   });
   it('rejects an email that already has an account (case-insensitive)', () => {
-    expect(validateSignup({ ...ok, email: 'SHRUTI@student.atria.edu' }, users, live, open)).toHaveProperty('email');
+    expect(validateSignup({ ...ok, email: 'SHRUTI@atria.edu.in' }, users, live, open)).toHaveProperty('email');
   });
   it('needs 8+ characters with letters and numbers, typed twice', () => {
     expect(validateSignup({ ...ok, password: 'short1', confirm: 'short1' }, users, live, open)).toHaveProperty('password');
@@ -42,12 +59,12 @@ describe('validateAnnouncement (M5)', () => {
 
 describe('validateUser (U1)', () => {
   const live = new Set(clubs.map(c => c.id));
-  const base = { name: 'New Student', email: 'new@student.atria.edu', role: 'student', password: 'secret1' };
+  const base = { name: 'New Student', email: 'new@atria.edu.in', role: 'student', password: 'secret1' };
   it('accepts a new student', () => {
     expect(validateUser(base, users, live)).toEqual({});
   });
   it('rejects a duplicate email (case-insensitive)', () => {
-    expect(validateUser({ ...base, email: 'ADMIN@atria.edu' }, users, live)).toHaveProperty('email');
+    expect(validateUser({ ...base, email: 'ADMIN@atria.edu.in' }, users, live)).toHaveProperty('email');
   });
   it('a club manager must be assigned to an existing club', () => {
     expect(validateUser({ ...base, role: 'clubManager' }, users, live)).toHaveProperty('clubId');
@@ -59,7 +76,7 @@ describe('validateUser (U1)', () => {
   });
   it('new users need a 6+ character password; edits do not', () => {
     expect(validateUser({ ...base, password: '123' }, users, live)).toHaveProperty('password');
-    expect(validateUser({ ...base, id: 'stu-raju', email: 'raju@student.atria.edu', password: undefined }, users, live)).toEqual({});
+    expect(validateUser({ ...base, id: 'stu-raju', email: 'raju@atria.edu.in', password: undefined }, users, live)).toEqual({});
   });
 });
 

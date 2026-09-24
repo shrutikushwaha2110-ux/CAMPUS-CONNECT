@@ -88,8 +88,8 @@ export function Signup() {
           <Row id="su-name" label="Full name" error={errors.name}>
             <input id="su-name" autoComplete="name" value={form.name} onChange={set('name')} className={`${inputClass} ${errors.name ? 'border-[#F87171]' : 'border-border'}`} />
           </Row>
-          <Row id="su-email" label="Email" error={errors.email}>
-            <input id="su-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} className={`${inputClass} ${errors.email ? 'border-[#F87171]' : 'border-border'}`} />
+          <Row id="su-email" label="Atria email" error={errors.email} hint="Must end with @atria.edu.in">
+            <input id="su-email" type="email" autoComplete="email" placeholder="yourname@atria.edu.in" value={form.email} onChange={set('email')} className={`${inputClass} ${errors.email ? 'border-[#F87171]' : 'border-border'}`} />
           </Row>
           {form.role !== 'student' && (
             <Row id="su-club" label={form.role === 'faculty' ? 'Club you will head' : 'Club you manage'} error={errors.clubId}

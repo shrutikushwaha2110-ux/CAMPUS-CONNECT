@@ -1,8 +1,16 @@
 // Form validation rules for staff forms (SPEC §7 rules 14, 15, 19; requirements O2, O5, C2)
-import { EVENT_CATEGORIES, CLUB_CATEGORIES } from './constants';
+import { EVENT_CATEGORIES, CLUB_CATEGORIES, ACCOUNT_EMAIL_DOMAIN } from './constants';
 import { getToday } from './date';
 
 export type Errors = Record<string, string>;
+
+// SU5: a well-formed address whose domain is exactly atria.edu.in (not a look-alike such as atria.edu.in.com or xatria.edu.in)
+export function isAtriaEmail(email: string): boolean {
+  const e = email.trim().toLowerCase();
+  const at = e.lastIndexOf('@');
+  return at > 0 && /^[^\s@]+@[^\s@]+$/.test(e) && e.slice(at + 1) === ACCOUNT_EMAIL_DOMAIN;
+}
+export const ATRIA_EMAIL_ERROR = `Use your Atria email ending in @${ACCOUNT_EMAIL_DOMAIN}`;
 
 export interface EventInput {
   title: string;
@@ -61,7 +69,7 @@ export function validateUser(
   const errors: Errors = {};
   const email = input.email.trim().toLowerCase();
   if (!input.name.trim()) errors.name = 'Name is required';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email';
+  if (!isAtriaEmail(email)) errors.email = ATRIA_EMAIL_ERROR;
   else if (existing.some(u => u.id !== input.id && u.email.toLowerCase() === email)) errors.email = 'Another account already uses this email';
   if (!['student', 'clubManager', 'faculty'].includes(input.role)) errors.role = 'Pick a role';
   // Club Managers manage one club; Faculty head one club (rule 26)
@@ -92,7 +100,7 @@ export function validateSignup(
   const errors: Errors = {};
   const email = input.email.trim().toLowerCase();
   if (!input.name.trim()) errors.name = 'Name is required';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email';
+  if (!isAtriaEmail(email)) errors.email = ATRIA_EMAIL_ERROR;
   else if (existing.some(u => u.email.toLowerCase() === email)) errors.email = 'An account with this email already exists. Log in instead.';
   if (input.password.length < 8 || !/[A-Za-z]/.test(input.password) || !/\d/.test(input.password)) {
     errors.password = 'Use at least 8 characters with letters and numbers';

@@ -9,19 +9,19 @@ const ROLE_INFO: Record<Role, { icon: string; blurb: string; can: string[]; demo
     icon: '🎓',
     blurb: 'Browse events and clubs, register for events, join up to 2 clubs.',
     can: ['Register for any event, from any club', 'Join a maximum of 2 clubs', 'See your registrations and announcements'],
-    demo: { email: 'shruti@student.atria.edu', password: 'demo123', note: 'Also: raju@, sohail@, ananya@student.atria.edu' },
+    demo: { email: 'shruti@atria.edu.in', password: 'demo123', note: 'Also: raju@, sohail@, ananya@atria.edu.in' },
   },
   clubManager: {
     icon: '🏛️',
     blurb: 'Manage one club: its events, members, registrations and announcements.',
     can: ['See only your own club’s management data', 'Create, edit and cancel your club’s events', 'Accept or reject registrations', 'Post club announcements'],
-    demo: { email: 'dance.manager@atria.edu', password: 'demo123', note: 'Also: music., literature., sports., esports., hackathon.manager@atria.edu' },
+    demo: { email: 'dance.manager@atria.edu.in', password: 'demo123', note: 'Also: music., literature., sports., esports., hackathon.manager@atria.edu.in' },
   },
   faculty: {
     icon: '🔬',
     blurb: 'Head one club, look after university events, and manage student and club accounts.',
     can: ['Manage the club you head + university (unit) events', 'Add new clubs', 'Approve sign-ups, manage students and your club managers', 'University-wide announcements'],
-    demo: { email: 'admin@atria.edu', password: 'admin123' },
+    demo: { email: 'admin@atria.edu.in', password: 'admin123' },
   },
 };
 

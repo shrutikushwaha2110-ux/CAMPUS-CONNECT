@@ -80,10 +80,10 @@ async function mustLogin(slug, email, password) {
   const h = await hash();
   if (h.startsWith('#/login')) throw new Error(`login as ${email} failed: "${await text('[role=alert]')}" (hash ${h})`);
 }
-const asStudent = (email = 'shruti@student.atria.edu') => mustLogin('student', email, 'demo123');
-const asManager = (club = 'dance') => mustLogin('club-manager', `${club}.manager@atria.edu`, 'demo123');
-const asFaculty = () => mustLogin('faculty', 'admin@atria.edu', 'admin123'); // Dr. Farah Khan, head of Dance Club
-const asMusicHead = () => mustLogin('faculty', 'meera.nair@atria.edu', 'admin123'); // Prof. Meera Nair, head of Music Club
+const asStudent = (email = 'shruti@atria.edu.in') => mustLogin('student', email, 'demo123');
+const asManager = (club = 'dance') => mustLogin('club-manager', `${club}.manager@atria.edu.in`, 'demo123');
+const asFaculty = () => mustLogin('faculty', 'admin@atria.edu.in', 'admin123'); // Dr. Farah Khan, head of Dance Club
+const asMusicHead = () => mustLogin('faculty', 'meera.nair@atria.edu.in', 'admin123'); // Prof. Meera Nair, head of Music Club
 const navLinks = () => page.$$eval('nav[aria-label=Main] a', as => as.map(a => a.innerText.trim()).filter(t => t && t !== 'CampusConnect' && t !== 'Log in'));
 const rowIds = () => page.$$eval('[data-event-row]', els => els.map(e => e.dataset.eventRow));
 const cardIds = () => page.$$eval('[data-event-card]', els => els.map(e => e.dataset.eventCard));
@@ -143,14 +143,14 @@ try {
   });
 
   await test('A1', 'Wrong password is rejected', 'student login, password "wrong"', 'Error, stays on login page', async () => {
-    await login('student', 'shruti@student.atria.edu', 'wrong');
+    await login('student', 'shruti@atria.edu.in', 'wrong');
     const err = await text('[role=alert]');
     expect(/incorrect/i.test(err) && (await hash()).includes('/login/student'), `err="${err}" hash=${await hash()}`);
     return `"${err}"`;
   });
 
   await test('A1', 'Student account cannot use the Faculty login', 'shruti@student… on /login/faculty', 'Error: use the login page for your role', async () => {
-    await login('faculty', 'shruti@student.atria.edu', 'demo123');
+    await login('faculty', 'shruti@atria.edu.in', 'demo123');
     const err = await text('[role=alert]');
     expect(/not a Faculty/i.test(err), err);
     return `"${err}"`;
@@ -183,10 +183,10 @@ try {
 
   // ---------- database: sign up, log in later ----------
   await fresh();
-  await test('SU1', 'Sign up as a new student, log out, log in again', 'Sign up "Neha Rao" neha@student.atria.edu / campus2026; log out; log in on /login/student', 'Lands on dashboard after sign-up and again after the later login', async () => {
+  await test('SU1', 'Sign up as a new student, log out, log in again', 'Sign up "Neha Rao" neha@atria.edu.in / campus2026; log out; log in on /login/student', 'Lands on dashboard after sign-up and again after the later login', async () => {
     await go('#/login/student');
     await click('Sign up');
-    await type('#su-name', 'Neha Rao'); await type('#su-email', 'neha@student.atria.edu');
+    await type('#su-name', 'Neha Rao'); await type('#su-email', 'neha@atria.edu.in');
     await type('#su-password', 'campus2026'); await type('#su-confirm', 'campus2026');
     await shot('18-signup-form');
     await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(1200);
@@ -194,45 +194,49 @@ try {
     expect(afterSignup.startsWith('#/dashboard') && afterSignup.includes('Hi, Neha'), afterSignup);
     await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
     await page.reload({ waitUntil: 'networkidle0' });
-    await mustLogin('student', 'neha@student.atria.edu', 'campus2026');
+    await mustLogin('student', 'neha@atria.edu.in', 'campus2026');
     const afterLogin = `${await hash()} "${await text('main h1')}"`;
     expect(afterLogin.startsWith('#/dashboard') && afterLogin.includes('Hi, Neha'), afterLogin);
     return `After sign-up: ${afterSignup}; after logging out and back in: ${afterLogin}`;
   });
 
-  await test('SU1', 'Sign-up form rejects bad input', 'Existing email, short password, mismatched confirm', 'Field errors, no account created', async () => {
+  await test('SU1', 'Sign-up form rejects bad input', 'Existing email, short password, mismatched confirm, a @gmail.com address', 'Field errors (incl. "must end with @atria.edu.in"), no account created', async () => {
     await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
     await go('#/signup');
-    await type('#su-name', 'Copy Cat'); await type('#su-email', 'shruti@student.atria.edu');
+    await type('#su-name', 'Copy Cat'); await type('#su-email', 'shruti@atria.edu.in');
     await type('#su-password', 'abc'); await type('#su-confirm', 'abd');
     await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(400);
     const local = await page.$$eval('[data-error]', els => els.map(e => `${e.dataset.error}: ${e.innerText}`));
-    await type('#su-password', 'campus2026'); await type('#su-confirm', 'campus2026');
+    await type('#su-email', 'copy.cat@gmail.com'); await type('#su-password', 'campus2026'); await type('#su-confirm', 'campus2026');
+    await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(400);
+    const domain = await text('[data-error="su-email"]');
+    expect(/@atria\.edu\.in/.test(domain), `domain error: ${domain}`);
+    await type('#su-email', 'shruti@atria.edu.in');
     await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(1000);
     const server = await text('[data-error="su-email"]');
     expect(local.some(e => e.startsWith('su-password')) && local.some(e => e.startsWith('su-confirm')) && /already exists/.test(server), `${local} | ${server}`);
-    return `Browser check: ${local.join('; ')} · Server check: "${server}"`;
+    return `Browser check: ${local.join('; ')} · gmail address: "${domain}" · Server check: "${server}"`;
   });
 
   await test('SU2', 'Club Manager sign-up waits for the faculty head’s approval', 'Sign up "Kabir" as Dance Club manager; try to log in; Dance head approves in Users; log in again', 'Pending message, login refused, then works after approval', async () => {
     await go('#/signup');
     await page.evaluate(() => [...document.querySelectorAll('[data-testid=signup-form] label')].find(l => l.innerText.trim() === 'Club Manager').click());
     await sleep(200);
-    await type('#su-name', 'Kabir Sen'); await type('#su-email', 'kabir@atria.edu');
+    await type('#su-name', 'Kabir Sen'); await type('#su-email', 'kabir@atria.edu.in');
     await type('#su-club', 'dance-club'); await type('#su-password', 'campus2026'); await type('#su-confirm', 'campus2026');
     await page.$eval('[data-testid=signup-form] button[type=submit]', b => b.click()); await sleep(1200);
     const pendingPage = await text('[data-testid=signup-pending]');
-    await login('club-manager', 'kabir@atria.edu', 'campus2026');
+    await login('club-manager', 'kabir@atria.edu.in', 'campus2026');
     const refused = await text('[role=alert]');
     await asMusicHead();
     await go('#/faculty/users');
-    const musicSees = await page.$$eval('[data-pending="kabir@atria.edu"] button', bs => bs.map(b => b.innerText));
+    const musicSees = await page.$$eval('[data-pending="kabir@atria.edu.in"] button', bs => bs.map(b => b.innerText));
     await asFaculty();
     await go('#/faculty/users');
     await shot('19-faculty-signup-requests');
-    await page.evaluate(() => [...document.querySelectorAll('[data-pending="kabir@atria.edu"] button')].find(b => b.innerText === 'Approve').click());
+    await page.evaluate(() => [...document.querySelectorAll('[data-pending="kabir@atria.edu.in"] button')].find(b => b.innerText === 'Approve').click());
     await sleep(800);
-    await mustLogin('club-manager', 'kabir@atria.edu', 'campus2026');
+    await mustLogin('club-manager', 'kabir@atria.edu.in', 'campus2026');
     const title = await text('main h1');
     expect(/waiting for approval/.test(pendingPage) && /waiting for approval/.test(refused) && musicSees.length === 0 && title === 'Dance Club', `${pendingPage} | ${refused} | music=${musicSees} | ${title}`);
     return `"Request sent … waiting for approval"; login refused ("${refused}"); Music head sees no Approve button; Dance head approved → Kabir lands on "${title}"`;
@@ -240,7 +244,7 @@ try {
 
   await test('SU4', 'Passwords never reach the browser', 'Faculty loads /api/state (all users)', 'No password or hash in the response', async () => {
     const st = JSON.stringify(await apiState());
-    expect(st.includes('kabir@atria.edu') && !/scrypt|password|campus2026|demo123/.test(st), 'secret found in state');
+    expect(st.includes('kabir@atria.edu.in') && !/scrypt|password|campus2026|demo123/.test(st), 'secret found in state');
     return `State has ${JSON.parse(st).users.length} users, no password fields or hashes`;
   });
 
@@ -338,7 +342,7 @@ try {
   });
 
   await test('M3', 'Club Manager rejects a registration and the seat is freed', 'Raju registers Open Mic; Music manager rejects', 'Raju sees Rejected; seats filled goes back down', async () => {
-    await asStudent('raju@student.atria.edu');
+    await asStudent('raju@atria.edu.in');
     await go('#/events/open-mic-evening'); await click('Register');
     await asManager('music');
     await go('#/manage/events/open-mic-evening/registrations');
@@ -346,7 +350,7 @@ try {
     await page.evaluate(() => [...document.querySelectorAll('[data-student="stu-raju"] button')].find(b => b.innerText === 'Reject').click());
     await sleep(350);
     const after = await page.$eval('[data-seats-filled]', e => e.dataset.seatsFilled);
-    await asStudent('raju@student.atria.edu');
+    await asStudent('raju@atria.edu.in');
     await go('#/events/open-mic-evening');
     const card = await text('[data-testid=registration-card]');
     expect(card.includes('Rejected') && before !== after, `${before} → ${after}; ${card}`);
@@ -425,7 +429,7 @@ try {
     const host = await page.$eval('#host', s => s.options[s.selectedIndex].text + (s.disabled ? ' (locked)' : ''));
     await page.$eval('[data-testid=event-form] button[type=submit]', b => b.click()); await sleep(500);
     const staffList = await text('[data-testid=staff-events]');
-    await asStudent('sohail@student.atria.edu');
+    await asStudent('sohail@atria.edu.in');
     await go('#/events?q=salsa');
     const t = await bodyText();
     expect(staffList.includes('Salsa Social Night') && t.includes('Salsa Social Night') && t.includes('by Dance Club'), 'not listed');
@@ -460,7 +464,7 @@ try {
     const row = await text('[data-event="annual-dance-fest"]');
     expect(row.includes('Cancelled by organiser'), row);
     await shot('09-student-dashboard-cancelled-event');
-    await asStudent('ananya@student.atria.edu');
+    await asStudent('ananya@atria.edu.in');
     await go('#/events/annual-dance-fest');
     const card = await text('[data-testid=registration-card]');
     expect(card.includes('Cancelled') && !(await bodyText()).includes('Request to register'), card);
@@ -491,7 +495,7 @@ try {
     const unitEditable = !!(await page.$('#venue'));
     await go('#/manage/events/open-mic-evening/edit');
     const musicBlocked = !!(await page.$('[data-testid=not-allowed]'));
-    await asStudent('sohail@student.atria.edu');
+    await asStudent('sohail@atria.edu.in');
     await go('#/events/dance-workshop');
     const updated = (await bodyText()).includes('Studio B');
     expect(unitEditable && musicBlocked && updated, `unit=${unitEditable} musicBlocked=${musicBlocked} updated=${updated}`);
@@ -542,11 +546,11 @@ try {
     await type('#u-role', 'faculty'); await sleep(200);
     const headClubs = await page.$$eval('#u-club option', os => os.map(o => o.text).filter(t => !t.startsWith('Select') && !t.startsWith('No club')));
     expect(mgrClubs.join() === 'Dance Club' && headClubs.join() === 'Photography Club', `mgr=${mgrClubs} head=${headClubs}`);
-    await type('#u-name', 'Asha K'); await type('#u-email', 'photo.head@atria.edu');
+    await type('#u-name', 'Asha K'); await type('#u-email', 'photo.head@atria.edu.in');
     const clubId = await page.$eval('#u-club', s => [...s.options].find(o => o.text === 'Photography Club').value);
     await type('#u-club', clubId); await type('#u-password', 'photo123');
     await page.$eval('[data-testid=user-form] button[type=submit]', b => b.click()); await sleep(400);
-    await mustLogin('faculty', 'photo.head@atria.edu', 'photo123');
+    await mustLogin('faculty', 'photo.head@atria.edu.in', 'photo123');
     await go('#/faculty/clubs');
     const mine = await page.$$eval('[data-club-row]', els => els.map(e => e.dataset.clubRow));
     expect(mine.length === 1 && mine[0].startsWith('photography-club'), `${mine}`);
@@ -559,7 +563,7 @@ try {
     await page.evaluate(() => [...document.querySelectorAll('[data-user="stu-raju"] button')].find(b => b.innerText === 'Deactivate').click());
     await sleep(250);
     await confirmDialog('Deactivate');
-    await login('student', 'raju@student.atria.edu', 'demo123');
+    await login('student', 'raju@atria.edu.in', 'demo123');
     const err = await text('[role=alert]');
     expect(/deactivated/i.test(err), err);
     return `"${err}"`;
@@ -598,9 +602,9 @@ try {
     await go('#/events/battle-of-bands');
     const bandsCancelled = (await bodyText()).includes('This event was cancelled.');
     await shot('12-student-dashboard-after-club-deleted');
-    await login('club-manager', 'music.manager@atria.edu', 'demo123');
+    await login('club-manager', 'music.manager@atria.edu.in', 'demo123');
     const mgrErr = await text('[role=alert]');
-    await login('faculty', 'meera.nair@atria.edu', 'admin123');
+    await login('faculty', 'meera.nair@atria.edu.in', 'admin123');
     const headErr = await text('[role=alert]');
     expect(!onClubs && !myClubs.includes('Music Club') && bandsCancelled && /not assigned to an active club/.test(mgrErr) && /not assigned to an active club/.test(headErr),
       `onClubs=${onClubs} myClubs="${myClubs}" cancelled=${bandsCancelled} mgr="${mgrErr}" head="${headErr}"`);

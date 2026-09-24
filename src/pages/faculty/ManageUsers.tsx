@@ -97,7 +97,7 @@ export function ManageUsers() {
           <h2 className="font-bold text-lg text-text mb-4">{draft.id ? `Edit ${draft.name}` : 'New user'}</h2>
           <form onSubmit={submit} noValidate className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="user-form">
             <Field label="Full name" htmlFor="u-name" error={errors.name}><TextInput id="u-name" value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} invalid={!!errors.name} /></Field>
-            <Field label="Email" htmlFor="u-email" error={errors.email}><TextInput id="u-email" type="email" value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} invalid={!!errors.email} /></Field>
+            <Field label="Email" htmlFor="u-email" error={errors.email} hint="Must end with @atria.edu.in"><TextInput id="u-email" type="email" placeholder="name@atria.edu.in" value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} invalid={!!errors.email} /></Field>
             <Field label="Role" htmlFor="u-role" error={errors.role} hint={editingSelf ? 'You cannot change your own role.' : undefined}>
               <SelectInput id="u-role" value={draft.role} onChange={e => setRole(e.target.value as Role)} disabled={editingSelf}>
                 {roleChoices.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}

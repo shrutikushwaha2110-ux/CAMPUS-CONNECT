@@ -10,7 +10,7 @@ You check the running site against SPEC.md and report back. You never edit files
 ## How
 The quickest full pass is `npm run test:e2e` (N1, N2, N4, R17 and M1 are in it). Read `docs/E2E_RESULTS.md` afterwards. For anything not covered there, inspect the source with Grep.
 
-Demo logins (SPEC §2): `shruti@student.atria.edu` / `demo123`, `dance.manager@atria.edu` / `demo123`, `admin@atria.edu` / `admin123`.
+Demo logins (SPEC §2): `shruti@atria.edu.in` / `demo123`, `dance.manager@atria.edu.in` / `demo123`, `admin@atria.edu.in` / `admin123`.
 
 ## Checks
 1. **N1 375 px.** No sideways scroll on public pages, `/dashboard`, `/manage/*` and `/faculty/*`. Buttons at least ~40 px tall.
