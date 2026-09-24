@@ -14,9 +14,9 @@ import { MAX_CLUBS_PER_STUDENT } from '../lib/constants';
 export function Dashboard() {
   const { events, clubs, units, announcements, clubMemberCount, currentUser, hostName } = useAppData();
   const { mine } = useRegistrations();
-  const { joinedClubs, followedUnits, leaveClub } = useMemberships();
+  const { joinedClubs, requestedClubs, followedUnits, leaveClub } = useMemberships();
   const toast = useToast();
-  const [leaving, setLeaving] = useState<{ id: string; name: string } | null>(null);
+  const [leaving, setLeaving] = useState<{ id: string; name: string; pending?: boolean } | null>(null);
   const today = getToday();
 
   const myRegs = useMemo(
@@ -28,6 +28,8 @@ export function Dashboard() {
   );
   const activeRegs = myRegs.filter(x => x.event.status === 'active' && x.reg.status !== 'rejected' && x.event.date >= today);
   const myClubs = clubs.filter(c => joinedClubs.includes(c.id));
+  const myRequests = clubs.filter(c => requestedClubs.includes(c.id));
+  const usedSlots = joinedClubs.length + requestedClubs.length;
   const myUnits = units.filter(u => followedUnits.includes(u.id));
   const myAnnouncements = announcements.filter(a => a.clubId === null || joinedClubs.includes(a.clubId)).slice(0, 5);
 
@@ -43,7 +45,7 @@ export function Dashboard() {
   const confirmLeave = async () => {
     if (!leaving) return;
     await leaveClub(leaving.id);
-    toast(`You left ${leaving.name}`);
+    toast(leaving.pending ? `Request to ${leaving.name} withdrawn` : `You left ${leaving.name}`);
     setLeaving(null);
   };
 
@@ -56,11 +58,11 @@ export function Dashboard() {
         actions={<Link to="/events" className="inline-flex items-center rounded-xl font-semibold text-sm px-4 min-h-[40px] bg-primary text-white hover:bg-primary-dark">Browse events</Link>}
       />
 
-      <div className="mb-8"><StudentRules joined={joinedClubs.length} /></div>
+      <div className="mb-8"><StudentRules joined={usedSlots} /></div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <StatTile label="Upcoming registrations" value={activeRegs.length} />
-        <StatTile label="Clubs joined" value={`${joinedClubs.length}/${MAX_CLUBS_PER_STUDENT}`} />
+        <StatTile label="Clubs joined" value={`${usedSlots}/${MAX_CLUBS_PER_STUDENT}`} hint={requestedClubs.length ? `${requestedClubs.length} waiting for approval` : undefined} />
         <StatTile label="Units followed" value={myUnits.length} />
         <StatTile label="Events on campus" value={upcomingSorted(events).filter(e => e.status === 'active').length} hint="upcoming" />
       </div>
@@ -108,11 +110,21 @@ export function Dashboard() {
         </div>
 
         <div>
-          <Section title={`My clubs (${joinedClubs.length}/${MAX_CLUBS_PER_STUDENT})`} action={<Link to="/clubs" className="text-sm font-semibold text-primary">Browse clubs →</Link>}>
-            {myClubs.length === 0 ? (
+          <Section title={`My clubs (${usedSlots}/${MAX_CLUBS_PER_STUDENT})`} action={<Link to="/clubs" className="text-sm font-semibold text-primary">Browse clubs →</Link>}>
+            {myClubs.length === 0 && myRequests.length === 0 ? (
               <EmptyState>You haven't joined any clubs yet.</EmptyState>
             ) : (
               <div className="flex flex-col gap-3" data-testid="my-clubs">
+                {myRequests.map(c => (
+                  <Card key={c.id} className="p-4 flex items-center gap-3" data-club-request={c.id}>
+                    <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white" style={{ backgroundColor: '#94a3b8' }}>{c.name[0]}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-text">{c.name}</p>
+                      <p className="text-xs mt-0.5"><Pill tone="amber">Waiting for approval</Pill></p>
+                    </div>
+                    <button onClick={() => setLeaving({ id: c.id, name: c.name, pending: true })} className="text-xs font-semibold text-text-muted hover:text-[#991B1B]">Withdraw</button>
+                  </Card>
+                ))}
                 {myClubs.map(c => (
                   <Card key={c.id} className="p-4 flex items-center gap-3" data-club={c.id}>
                     <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white" style={{ backgroundColor: '#1C1750' }}>{c.name[0]}</div>
@@ -159,8 +171,9 @@ export function Dashboard() {
         </div>
       </div>
 
-      <ConfirmDialog open={!!leaving} title="Are you sure?" message={<>Leave <strong>{leaving?.name}</strong>?</>}
-        confirmLabel="Leave club" onConfirm={confirmLeave} onCancel={() => setLeaving(null)} />
+      <ConfirmDialog open={!!leaving} title="Are you sure?"
+        message={leaving?.pending ? <>Withdraw your request to join <strong>{leaving?.name}</strong>?</> : <>Leave <strong>{leaving?.name}</strong>?</>}
+        confirmLabel={leaving?.pending ? 'Withdraw request' : 'Leave club'} onConfirm={confirmLeave} onCancel={() => setLeaving(null)} />
     </div>
   );
 }

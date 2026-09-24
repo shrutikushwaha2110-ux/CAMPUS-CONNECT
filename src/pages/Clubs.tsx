@@ -14,16 +14,17 @@ import { canViewClubAdmin } from '../lib/permissions';
 
 export function Clubs() {
   const { clubs, units, events, memberships, session, liveClubIds, clubMemberCount } = useAppData();
-  const { hasJoined, joinedClubs, joinClub, leaveClub } = useMemberships();
+  const { statusOf, joinedClubs, requestedClubs, joinClub, leaveClub } = useMemberships();
   const toast = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<ClubCategory | 'All'>('All');
-  const [leaving, setLeaving] = useState<{ id: string; name: string } | null>(null);
+  const [leaving, setLeaving] = useState<{ id: string; name: string; pending: boolean } | null>(null);
 
   const isStudent = session?.role === 'student';
-  const atLimit = isStudent && joinedClubs.length >= MAX_CLUBS_PER_STUDENT;
+  const usedSlots = joinedClubs.length + requestedClubs.length;
+  const atLimit = isStudent && usedSlots >= MAX_CLUBS_PER_STUDENT;
   const upcoming = useMemo(() => upcomingSorted(events).filter(e => e.status === 'active'), [events]);
 
   const filtered = useMemo(() =>
@@ -40,13 +41,13 @@ export function Clubs() {
     if (block === 'limit') { toast(`You can join a maximum of ${MAX_CLUBS_PER_STUDENT} clubs. Leave one first.`); return; }
     if (block) return;
     const err = await joinClub(id);
-    toast(err ? `Could not join ${name} (${err}).` : `You joined ${name}`);
+    toast(err ? `Could not send the request (${err}).` : `Request sent to ${name}. The club manager will review it.`);
   };
 
   const confirmLeave = async () => {
     if (!leaving) return;
     await leaveClub(leaving.id);
-    toast(`You left ${leaving.name}`);
+    toast(leaving.pending ? `Request to ${leaving.name} withdrawn` : `You left ${leaving.name}`);
     setLeaving(null);
   };
 
@@ -57,7 +58,7 @@ export function Clubs() {
         <SearchBar value={search} onChange={setSearch} onSearch={() => setActiveSearch(search)} placeholder="Search clubs or categories" />
       </div>
 
-      <StudentRules joined={isStudent ? joinedClubs.length : undefined} />
+      <StudentRules joined={isStudent ? usedSlots : undefined} />
 
       <div className="flex items-center gap-2.5 flex-wrap mb-6 mt-8">
         <FilterChip label="All" selected={activeCategory === 'All'} onClick={() => setActiveCategory('All')} />
@@ -76,11 +77,13 @@ export function Clubs() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filtered.map(club => {
-          const joined = hasJoined(club.id);
+          const status = statusOf(club.id);
+          const joined = status === 'approved';
+          const pending = status === 'pending';
           const count = clubMemberCount(club);
           const unitName = units.find(u => u.id === club.unitId)?.name ?? club.unitId;
           const clubEvents = upcoming.filter(e => e.hostType === 'club' && e.hostId === club.id);
-          const joinDisabled = !joined && atLimit;
+          const joinDisabled = !joined && !pending && atLimit;
           return (
             <div key={club.id} data-club={club.id} className="bg-white rounded-2xl p-6 flex flex-col gap-4"
               style={{ border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(31,29,43,0.07), 0 4px 16px rgba(31,29,43,0.05)' }}>
@@ -96,17 +99,19 @@ export function Clubs() {
                   ) : null
                 ) : (
                   <button
-                    onClick={() => joined ? setLeaving({ id: club.id, name: club.name }) : handleJoin(club.id, club.name)}
+                    onClick={() => (joined || pending) ? setLeaving({ id: club.id, name: club.name, pending }) : handleJoin(club.id, club.name)}
                     disabled={joinDisabled}
                     title={joinDisabled ? `You can join a maximum of ${MAX_CLUBS_PER_STUDENT} clubs` : undefined}
                     className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5 disabled:cursor-not-allowed"
                     style={joined
                       ? { backgroundColor: '#fff', color: '#4637D2', border: '1.5px solid #4637D2' }
+                      : pending
+                        ? { backgroundColor: '#FEF3C7', color: '#78350F', border: '1.5px solid #FDE68A' }
                       : joinDisabled
                         ? { backgroundColor: '#E2E8F0', color: '#64748b', border: '1.5px solid #E2E8F0' }
                         : { backgroundColor: '#4637D2', color: '#fff', border: '1.5px solid #4637D2' }}>
                     {joined && <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>}
-                    {joined ? 'Joined' : joinDisabled ? 'Limit reached' : 'Join'}
+                    {joined ? 'Joined' : pending ? 'Requested' : joinDisabled ? 'Limit reached' : status === 'rejected' ? 'Request again' : 'Request to join'}
                   </button>
                 )}
               </div>
@@ -140,8 +145,10 @@ export function Clubs() {
       <ConfirmDialog
         open={!!leaving}
         title="Are you sure?"
-        message={<>Leave <strong>{leaving?.name}</strong>? You can still register for its events.</>}
-        confirmLabel="Leave club"
+        message={leaving?.pending
+          ? <>Withdraw your request to join <strong>{leaving?.name}</strong>?</>
+          : <>Leave <strong>{leaving?.name}</strong>? You can still register for its events.</>}
+        confirmLabel={leaving?.pending ? 'Withdraw request' : 'Leave club'}
         onConfirm={confirmLeave}
         onCancel={() => setLeaving(null)}
       />

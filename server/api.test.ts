@@ -12,6 +12,9 @@ let base = '';
 beforeAll(async () => {
   db = openDb(':memory:');
   server = createApp(db).listen(0);
+  // Re-seeding hashes 16 passwords and blocks for a few seconds; a longer keep-alive stops the server closing
+  // a pooled connection just as the next request reuses it (ECONNRESET)
+  server.keepAliveTimeout = 60_000;
   await new Promise(r => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
 });
@@ -164,6 +167,38 @@ describe('the server enforces the rules, not just the pages', () => {
     expect(third.status).toBe(409);
     expect(third.body.error).toBe('limit');
     expect((await s.call('POST', '/events/twenty-four-hour-hackathon/registration')).body.error).toBe('full');
+  });
+  it('F9b/M8: joining is a request the club’s manager or faculty head approves; others cannot', async () => {
+    const s = client();
+    await s.login('shruti@atria.edu.in', 'demo123', 'student');
+    expect((await s.call('POST', '/clubs/dance-club/membership')).body.status).toBe('pending');
+    expect((await s.state()).memberCounts['dance-club']).toBeUndefined(); // pending doesn't count as a member
+    const music = client();
+    await music.login('music.manager@atria.edu.in', 'demo123', 'clubManager');
+    expect((await music.call('PATCH', '/clubs/dance-club/members/stu-shruti', { status: 'approved' })).status).toBe(403);
+    const musicHead = client();
+    await musicHead.login('meera.nair@atria.edu.in', 'admin123', 'faculty');
+    expect((await musicHead.call('PATCH', '/clubs/dance-club/members/stu-shruti', { status: 'approved' })).status).toBe(403);
+    const dance = client();
+    await dance.login('dance.manager@atria.edu.in', 'demo123', 'clubManager');
+    expect((await dance.state()).memberships).toEqual([expect.objectContaining({ userId: 'stu-shruti', status: 'pending' })]);
+    expect((await dance.call('PATCH', '/clubs/dance-club/members/stu-shruti', { status: 'approved' })).status).toBe(200);
+    expect((await s.state()).memberCounts['dance-club']).toBe(1);
+    // the faculty head of the club can remove the member
+    const head = client();
+    await head.login('admin@atria.edu.in', 'admin123', 'faculty');
+    expect((await head.call('DELETE', '/clubs/dance-club/members/stu-shruti')).status).toBe(200);
+    expect((await s.state()).memberships).toEqual([]);
+  });
+  it('a rejected request frees the slot and can be sent again', async () => {
+    const s = client();
+    await s.login('raju@atria.edu.in', 'demo123', 'student');
+    await s.call('POST', '/clubs/dance-club/membership');
+    const dance = client();
+    await dance.login('dance.manager@atria.edu.in', 'demo123', 'clubManager');
+    await dance.call('PATCH', '/clubs/dance-club/members/stu-raju', { status: 'rejected' });
+    expect((await s.state()).memberships[0].status).toBe('rejected');
+    expect((await s.call('POST', '/clubs/dance-club/membership')).body.status).toBe('pending');
   });
   it('students only see their own registrations; seat counts stay correct', async () => {
     const a = client();

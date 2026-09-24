@@ -44,7 +44,9 @@ interface AppData extends ServerState {
   register: (eventId: string) => Promise<Registration | string>;
   cancelRegistration: (eventId: string) => Promise<void>;
   joinClub: (clubId: string) => Promise<string | null>;
-  leaveClub: (clubId: string) => Promise<void>;
+  leaveClub: (clubId: string) => Promise<void>; // leave, or withdraw a pending request
+  reviewMember: (clubId: string, userId: string, status: 'approved' | 'rejected') => Promise<ActionResult>;
+  removeMember: (clubId: string, userId: string) => Promise<ActionResult>;
   followUnit: (unitId: string) => Promise<void>;
   unfollowUnit: (unitId: string) => Promise<void>;
   // staff actions
@@ -114,6 +116,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return r.ok ? null : r.error ?? 'error';
     },
     leaveClub: async clubId => { await run('DELETE', `/clubs/${clubId}/membership`); },
+    reviewMember: async (clubId, userId, status) => toResult(await run('PATCH', `/clubs/${clubId}/members/${userId}`, { status })),
+    removeMember: async (clubId, userId) => toResult(await run('DELETE', `/clubs/${clubId}/members/${userId}`)),
     followUnit: async unitId => { await run('POST', `/units/${unitId}/follow`); },
     unfollowUnit: async unitId => { await run('DELETE', `/units/${unitId}/follow`); },
 

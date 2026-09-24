@@ -56,10 +56,13 @@ export interface Registration {
   createdAt: string; // ISO timestamp
 }
 
+export type MembershipStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Membership {
   userId: string;
   clubId: string;
-  joinedAt: string;
+  status: MembershipStatus; // join requests start 'pending' until the club's staff decide
+  joinedAt: string; // when the request was sent
 }
 
 export interface Follow {

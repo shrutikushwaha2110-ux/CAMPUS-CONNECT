@@ -26,8 +26,8 @@ It's an unofficial student project. Clubs and events are sample data. **Accounts
 | `npm run dev` | Vite dev server **+ API + database** (5173; the preview pane uses 5180) | while building |
 | `npm start` | Production server: API + built `dist/` on `PORT` (default 3000) | after `npm run build` / on the host |
 | `npm run db:reset` | Wipe the database and re-seed the demo data (all sign-ups lost) | before a demo |
-| `npm test` | 131 Vitest tests: every rule in `src/lib` + 15 API tests against a real in-memory SQLite DB | after any logic change (a hook runs it automatically) |
-| `npm run test:e2e` | Builds, starts the real server with a temporary DB, drives Chrome through 40 scenarios (incl. sign-up + approval), writes `docs/E2E_RESULTS.md` + screenshots | before any PR / demo |
+| `npm test` | 136 Vitest tests: every rule in `src/lib` + 17 API tests against a real in-memory SQLite DB | after any logic change (a hook runs it automatically) |
+| `npm run test:e2e` | Builds, starts the real server with a temporary DB, drives Chrome through 43 scenarios (incl. sign-up, approvals, club join requests), writes `docs/E2E_RESULTS.md` + screenshots | before any PR / demo |
 | `npm run test:hooks` | 9 test cases proving the hooks fire on the right events | after touching `.claude/hooks/` |
 | `npm run build` | `tsc --noEmit` + production build → `dist/` | must pass before any PR |
 
@@ -85,6 +85,7 @@ docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVE
 - `HideFor` (`components/StaffRoute.tsx`) does the role-specific routing: Club Managers are redirected from `/`, `/clubs`, `/units` to `/manage`; Faculty from `/` and `/units` to `/faculty`.
 - Staff opening another club's event page (`/events/:id`) get "Not available". Students and visitors see every event.
 
+- **Joining a club is a request** (`memberships.status` pending → approved/rejected). Only that club's Club Manager or faculty head decides (`canManageMembers`, checked again in `PATCH/DELETE /api/clubs/:id/members/:userId`). Pending requests use one of the 2 slots; only approved members count or get announcements.
 - **Emails must end with `@atria.edu.in`** (`isAtriaEmail` / `ACCOUNT_EMAIL_DOMAIN`), checked in the forms and again on the server.
 - Accounts: `/signup` creates them (Students active at once; Club Manager / Faculty **pending** until approved in Users → Sign-up requests, `canReviewSignup`). Login is `POST /api/auth/login` (password check on the server, then `loginDecision`).
 - The session is `{ userId, role, clubId? }`, built by the server from the `cc_session` cookie and **re-validated on every request** (`validateSession`): a deactivated / declined user, a changed role or a deleted club ends it.

@@ -26,6 +26,10 @@ export function canViewClubAdmin(actor: Actor | null | undefined, clubId: string
   return isStaff(actor) && actor!.clubId === clubId;
 }
 
+// Rule 10b: join requests and the member list are managed by the club's own staff:
+// its Club Manager(s) and its faculty head. Nobody from another club.
+export const canManageMembers = canViewClubAdmin;
+
 // Faculty edit / delete only the club they head (rule 18)
 export function canEditClub(actor: Actor | null | undefined, clubId: string): boolean {
   return isFaculty(actor) && actor!.clubId === clubId;

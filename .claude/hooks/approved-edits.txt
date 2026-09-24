@@ -10,3 +10,4 @@
 # 2026-09-24  Shruti: staff Events page must use the student Events UI. Unlocked SPEC.md for that line; re-locked after.
 # 2026-09-24  Shruti: add a database + sign-up with stored credentials. Unlocked SPEC.md for that; re-locked after.
 # 2026-09-24  Shruti: all emails must end with @atria.edu.in. Unlocked SPEC.md + src/data/users.json; re-locked after.
+# 2026-09-24  Shruti: joining a club needs approval by the club manager / faculty head. Unlocked SPEC.md; re-locked after.

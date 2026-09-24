@@ -273,21 +273,35 @@ try {
     return 'Card: "Your registration: Confirmed / Registered"; dashboard lists Open Mic Evening · Confirmed';
   });
 
-  await test('F9a', 'Join max 2 clubs', 'Join Dance Club, Music Club, then try Sports Club', 'Third join blocked: "Limit reached", counter 2/2', async () => {
+  await test('F9b', 'Joining a club sends a request', 'Shruti clicks "Request to join" on Dance Club, then Music Club', 'Buttons turn "Requested"; toast says the manager will review; dashboard shows "Waiting for approval"', async () => {
     await go('#/clubs');
-    await page.$eval('[data-club="dance-club"] button', b => b.click()); await sleep(250);
-    await page.$eval('[data-club="music-club"] button', b => b.click()); await sleep(250);
+    const before = await page.$eval('[data-club="dance-club"] button', b => b.innerText.trim());
+    await page.$eval('[data-club="dance-club"] button', b => b.click()); await sleep(400);
+    const toastText = await text('[role=status]');
+    await page.$eval('[data-club="music-club"] button', b => b.click()); await sleep(400);
+    const dance = await page.$eval('[data-club="dance-club"] button', b => b.innerText.trim());
+    const members = await page.$eval('[data-club="dance-club"] [data-members]', e => e.innerText.trim());
+    expect(before === 'Request to join' && dance === 'Requested' && /club manager will review/.test(toastText), `${before} → ${dance}; "${toastText}"`);
+    expect(members === '128 members', `count changed before approval: ${members}`);
+    await go('#/dashboard');
+    const reqs = await page.$$eval('[data-club-request]', els => els.map(e => e.dataset.clubRequest));
+    expect(reqs.sort().join() === 'dance-club,music-club', `dashboard requests: ${reqs}`);
+    return `Button "${before}" → "${dance}"; toast "${toastText}"; member count still 128 until approved; dashboard lists 2 requests "Waiting for approval"`;
+  });
+
+  await test('F9a', 'Join max 2 clubs (requests count)', 'With 2 pending requests, look at Sports Club', 'Third join blocked: "Limit reached", counter 2 of 2', async () => {
+    await go('#/clubs');
     const sportsBtn = await page.$eval('[data-club="sports-club"] button', b => ({ t: b.innerText.trim(), d: b.disabled }));
     const rules = await text('[data-testid=student-rules]');
     expect(sportsBtn.t === 'Limit reached' && sportsBtn.d, JSON.stringify(sportsBtn));
-    expect(rules.includes("joined 2 of 2"), rules);
+    expect(rules.includes('using 2 of 2'), rules);
     const stored = (await apiState()).memberships.length;
     expect(stored === 2, `stored memberships ${stored}`);
     await shot('03-student-clubs-limit');
-    return `Sports Club button "${sportsBtn.t}" (disabled); banner "You've joined 2 of 2"; 2 memberships stored`;
+    return `Sports Club button "${sportsBtn.t}" (disabled); banner "You're using 2 of 2"; 2 requests stored`;
   });
 
-  await test('F9a', 'Still able to register for a non-member club’s event at the limit', 'With 2 clubs, register for Football Cup (Sports Club)', 'Registration succeeds', async () => {
+  await test('F9a', 'Still able to register for a non-member club’s event at the limit', 'With 2 club slots used, register for Football Cup (Sports Club)', 'Registration succeeds', async () => {
     await go('#/events/football-cup');
     await click('Register');
     const card = await text('[data-testid=registration-card]');
@@ -295,29 +309,72 @@ try {
     return 'Confirmed';
   });
 
-  await test('F9', 'Leave a club frees a slot', 'Leave Music Club (confirm), then Sports Club button', 'Sports "Join" enabled again', async () => {
+  await test('F9', 'Withdrawing a request frees a slot', 'Click "Requested" on Music Club → Withdraw request, then look at Sports', 'Sports "Request to join" enabled again', async () => {
     await go('#/clubs');
     await page.$eval('[data-club="music-club"] button', b => b.click()); await sleep(250);
-    await confirmDialog('Leave club');
+    await confirmDialog('Withdraw request');
     const t = await page.$eval('[data-club="sports-club"] button', b => b.innerText.trim() + (b.disabled ? ' (disabled)' : ''));
-    expect(t === 'Join', t);
-    // re-join Music so later scenarios have a Music member
-    await page.$eval('[data-club="music-club"] button', b => b.click()); await sleep(250);
+    expect(t === 'Request to join', t);
+    // request Music again so later scenarios have a Music member
+    await page.$eval('[data-club="music-club"] button', b => b.click()); await sleep(400);
     return `Sports button: "${t}"`;
   });
 
-  await test('F10', 'Student dashboard shows everything', 'Open /dashboard', 'Registrations, clubs 2/2, announcements, suggestions', async () => {
+  await test('M8', 'Club Manager approves join requests and sees the member', 'Dance manager opens Manage club → Join requests → Approve Shruti; Music manager does the same', 'Shruti moves to Members; count 128 → 129; Music manager cannot touch Dance requests', async () => {
+    await asManager('dance');
+    await go('#/manage');
+    const reqs = await page.$$eval('[data-join-request]', els => els.map(e => e.dataset.joinRequest));
+    await shot('20-manager-join-requests');
+    await page.evaluate(() => [...document.querySelectorAll('[data-join-request="stu-shruti"] button')].find(b => b.innerText === 'Approve').click());
+    await sleep(700);
+    const members = await page.$$eval('[data-member]', els => els.map(e => e.dataset.member));
+    const count = await page.$eval('[data-stat="Members"]', e => e.innerText);
+    const music = await page.evaluate(() => fetch('/api/state').then(r => r.json()).then(s => s.session.clubId));
+    await asManager('music');
+    const cross = await page.evaluate(() => fetch('/api/clubs/dance-club/members/stu-shruti', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) }).then(r => r.status));
+    await go('#/manage');
+    await page.evaluate(() => [...document.querySelectorAll('[data-join-request="stu-shruti"] button')].find(b => b.innerText === 'Approve').click());
+    await sleep(700);
+    expect(reqs.includes('stu-shruti') && members.includes('stu-shruti') && count === '129' && cross === 403, `reqs=${reqs} members=${members} count=${count} cross=${cross} (${music})`);
+    return `Dance join requests: ${reqs.join(', ')}; after Approve: Members include Shruti, count 129; Music manager changing a Dance request → HTTP ${cross}; Music manager approved Shruti for Music`;
+  });
+
+  await test('F10', 'Student dashboard shows everything', 'Shruti opens /dashboard after both approvals', 'Registrations, clubs 2/2, announcements from both clubs, suggestions', async () => {
+    await asStudent();
     await go('#/dashboard');
     const t = await bodyText();
     expect(t.includes('My clubs (2/2)') && t.includes('Upcoming events for you') && t.includes('Announcements'), 'sections missing');
     const ann = await text('[data-testid=my-announcements]');
-    expect(ann.includes('Welcome to CampusConnect') && ann.includes('Annual Dance Fest auditions'), ann);
+    expect(ann.includes('Welcome to CampusConnect') && ann.includes('Annual Dance Fest auditions') && ann.includes('Weekly jam night'), ann);
     await shot('04-student-dashboard');
-    return 'Sections: registrations, upcoming for you, My clubs (2/2), announcements (university + Dance + Music), following';
+    return 'Sections: registrations, upcoming for you, My clubs (2/2) with both approved, announcements (university + Dance + Music), following';
+  });
+
+  await test('M8f', 'The club’s faculty head manages its members too', 'Raju requests Dance; Dance faculty head approves on My club → View, then removes him (confirm)', 'Head sees request + member list, can approve and remove; Raju ends with no clubs', async () => {
+    await asStudent('raju@atria.edu.in');
+    await go('#/clubs');
+    await page.$eval('[data-club="dance-club"] button', b => b.click()); await sleep(400);
+    await asFaculty();
+    await go('#/faculty/clubs/dance-club');
+    const req = await page.$$eval('[data-join-request]', els => els.map(e => e.dataset.joinRequest));
+    await page.evaluate(() => [...document.querySelectorAll('[data-join-request="stu-raju"] button')].find(b => b.innerText === 'Approve').click());
+    await sleep(700);
+    const afterApprove = await page.$$eval('[data-member]', els => els.map(e => e.dataset.member));
+    await shot('21-faculty-club-members');
+    await page.evaluate(() => [...document.querySelectorAll('[data-member="stu-raju"] button')].find(b => b.innerText === 'Remove').click());
+    await sleep(250);
+    await confirmDialog('Remove member');
+    const afterRemove = await page.$$eval('[data-member]', els => els.map(e => e.dataset.member));
+    await go('#/faculty/clubs/music-club');
+    const otherBlocked = !!(await page.$('[data-testid=not-allowed]'));
+    expect(req.includes('stu-raju') && afterApprove.includes('stu-raju') && !afterRemove.includes('stu-raju') && otherBlocked,
+      `req=${req} approve=${afterApprove} remove=${afterRemove} otherBlocked=${otherBlocked}`);
+    return `Dance head saw request from Raju, approved (members: ${afterApprove.join(', ')}), removed him (members: ${afterRemove.join(', ')}); Music Club's member page blocked for the Dance head`;
   });
 
   // ---------- approval flow ----------
   await test('M3', 'Registration needing approval starts Pending', 'Shruti requests Battle of Bands (requiresApproval)', 'Status "Pending approval"', async () => {
+    await asStudent();
     await go('#/events/battle-of-bands');
     await click('Request to register');
     const card = await text('[data-testid=registration-card]');

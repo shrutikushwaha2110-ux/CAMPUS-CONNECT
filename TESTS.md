@@ -6,8 +6,8 @@ Every result here was produced by actually running the check. Nothing is filled 
 
 | Suite | Command | What it covers | Result |
 |---|---|---|---|
-| Unit + API (Vitest) | `npm test` | Every rule in `src/lib/` + 15 API tests (real Express app, real SQLite DB in memory) | **131 / 131 ✅** |
-| End-to-end (real Chrome) | `npm run test:e2e` | 40 scenarios: sign-up + later login, staff approval, every role, access, 375 px, reduced motion, no WebGL (real server, temporary DB) | **40 / 40 ✅**: full table in [`docs/E2E_RESULTS.md`](docs/E2E_RESULTS.md) |
+| Unit + API (Vitest) | `npm test` | Every rule in `src/lib/` + 17 API tests (real Express app, real SQLite DB in memory) | **136 / 136 ✅** |
+| End-to-end (real Chrome) | `npm run test:e2e` | 43 scenarios: club join requests + approval, sign-up + later login, staff approval, every role, access, 375 px, reduced motion, no WebGL (real server, temporary DB) | **43 / 43 ✅**: full table in [`docs/E2E_RESULTS.md`](docs/E2E_RESULTS.md) |
 | Hooks | `npm run test:hooks` | The two Claude Code hooks fire on the right events | **9 / 9 ✅** |
 | Build | `npm run build` | `tsc --noEmit` + Vite production build | **✅ passes** |
 
@@ -26,6 +26,18 @@ Screenshots taken during the e2e run are in `docs/screenshots/site/`. Proof imag
 | `clubs.test.ts` | rule 20 · C4 | 4 |
 | `eventFilter.test.ts` | rules 8, 9 · F1–F3 | 13 |
 | `merge.test.ts` | SPEC §6 merge rule | 4 |
+
+## v3.1 club join requests (2026-09-24)
+
+| Feature | Input tried | Expected | Actual | Pass/Fail |
+|---|---|---|---|---|
+| F9b Request | Shruti clicks "Request to join" on Dance, then Music | "Requested", manager will review, count unchanged, dashboard lists requests | Button "Request to join" → "Requested"; toast "Request sent to Dance Club. The club manager will review it."; still 128 members; dashboard shows both "Waiting for approval" | ✅ Pass |
+| F9a Limit | 2 pending requests, look at Sports Club | Blocked | "Limit reached" (disabled); banner "You're using 2 of 2" | ✅ Pass |
+| F9 Withdraw | Click "Requested" on Music → Withdraw request | Slot freed | Sports shows "Request to join" again | ✅ Pass |
+| M8 Manager approves | Dance manager → Manage club → Join requests → Approve Shruti | Shruti in Members, count +1; Music manager can't touch Dance requests | Members include Shruti, count 129; Music manager PATCH on Dance request → HTTP 403 | ✅ Pass |
+| M8 Faculty head | Raju requests Dance; Dance head (admin@) approves on My club → View, then Removes him | Head can approve + remove; Music club view blocked | Approved, then removed after confirm; `/faculty/clubs/music-club` "Not available" | ✅ Pass |
+| F10 Announcements | Shruti's dashboard after approvals | Dance + Music announcements appear only once approved | "Annual Dance Fest auditions" + "Weekly jam night" shown | ✅ Pass |
+| API | 2 new HTTP tests: other club's manager/head → 403, own manager approves, member count only after approval, head removes; rejected request re-sent | as SPEC | pass | ✅ Pass |
 
 ## v3 database + sign-up (2026-09-24)
 

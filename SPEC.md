@@ -2,7 +2,7 @@
 
 **Team:** Shruti (Figma design) · Raju (student pages & logic) · Sohail (staff pages)
 **Design source:** Figma Make file "Add Logo and Name" (`ej75XJhPL0fvejEo92cI3I`)
-**Version:** v3 (2026-09-24): SQLite database + Node API, sign-up with hashed passwords, approval of staff sign-ups. v2.1 (2026-09-24): staff sections trimmed; each faculty member heads ONE club. v2 (2026-09-23): three roles with separate logins and dashboards. v1: single demo student.
+**Version:** v3.1 (2026-09-24): joining a club is a request approved by the club's manager or faculty head. v3 (2026-09-24): SQLite database + Node API, sign-up with hashed passwords, approval of staff sign-ups. v2.1 (2026-09-24): staff sections trimmed; each faculty member heads ONE club. v2 (2026-09-23): three roles with separate logins and dashboards. v1: single demo student.
 
 > This file is the source of truth. The team writes it; Claude may help think it through. A Claude Code hook blocks edits to it unless the team lists it in `.claude/hooks/approved-edits.txt` (see CLAUDE.md → Hooks).
 
@@ -70,7 +70,7 @@ Using one browser for every role is on purpose: in the viva you can register as 
 ### Club Manager (role `clubManager`, own club only; navbar = Manage club + Events)
 | Page | Route | Contents |
 |---|---|---|
-| Manage club | `/manage` | Club info, stats (members, upcoming events, registrations, pending), upcoming events with seats filled + Registrations / Edit / Cancel, + New event, + Announcement, members list |
+| Manage club | `/manage` | Club info, stats (members, upcoming events, registrations, pending event + join approvals), upcoming events with seats filled + Registrations / Edit / Cancel, + New event, + Announcement, **Join requests (Approve / Decline)**, **Members (Remove)** |
 | Events | `/events` | The student Events UI showing only the club's upcoming hosted events (cards open the event page with "Manage registrations"), then the club's announcements (edit / delete). Edit / cancel / past events are in Manage club |
 | New / edit event | `/manage/events/new`, `/manage/events/:id/edit` | Form: title, category, host (locked to own club), date, time, venue, seats, description, "needs approval" |
 | Registrations | `/manage/events/:id/registrations` | Seats filled, confirmed/pending/rejected counts, students with Accept / Reject, earlier sample attendees |
@@ -122,6 +122,7 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | F8 | Browse clubs, filter by category |
 | F9 | Join / leave a club; member count ±1; leave asks "Are you sure?" |
 | F9a | **Join at most 2 clubs**: third Join shows "Limit reached" (disabled); both rules are written on the Clubs page and dashboard: "You can join a maximum of 2 clubs." and "You can attend/register for events from any club." |
+| F9b | **Joining a club is a request.** "Request to join" creates a *pending* membership (button shows "Requested"; dashboard shows "Waiting for approval"). The student becomes a member only when the club's Club Manager or faculty head approves; a declined request can be sent again; a pending request can be withdrawn. Pending requests use one of the 2 club slots; member counts and club announcements count approved members only |
 | F10 | Student dashboard: registrations with status, joined clubs (x/2), upcoming events for you, announcements, followed units, empty states |
 | F11 | Seats badge: "N seats left" / "Almost full" (1–5) / "Full" / "Cancelled" |
 | F12 | Confirmation toast after register, cancel, join, leave, follow, unfollow and every staff action |
@@ -139,6 +140,7 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 | M2 | Club dashboard shows club info, members, upcoming events with seats filled, pending approvals |
 | M3 | Registrations page lists students; **Accept / Reject**. Events marked "needs approval" start registrations as Pending. Rejecting frees the seat; re-accepting needs a free seat. |
 | M5 | Create / edit / delete announcements for their own club; members see them on their dashboard |
+| M8 | Manage club shows **Join requests** (Approve / Decline) and the **Members** list (with Remove, after "Are you sure?"). The same controls are on the faculty head's club view (`/faculty/clubs/:id`). Staff of other clubs cannot see or change them (checked by the server) |
 | O1 | Create an event (host locked to own club); appears on Events |
 | O2 | Invalid form (required field empty, seats < 1, past date) shows errors and creates nothing |
 | O3 | Edit own events; change visible on student pages |
@@ -179,7 +181,7 @@ Every ID has at least one test case in `TESTS.md` / `docs/E2E_RESULTS.md`.
 **User:** `id, name, email (unique, case-insensitive), password_hash (server only), role (student|clubManager|faculty), clubId? (club managers: the club they manage; faculty: the club they head), active, status (approved|pending|declined), createdAt`
 **Announcement:** `id, clubId (null = university-wide), title, body, authorId, createdAt, updatedAt`
 **Registration:** `id, eventId, userId, status (confirmed|pending|rejected), createdAt`
-**Membership:** `userId, clubId, joinedAt` · **Follow:** `userId, unitId`
+**Membership:** `userId, clubId, status (pending|approved|rejected), joinedAt` · **Follow:** `userId, unitId`
 **Session:** `sessions` table (token hash, user, expiry, 7 days) + `cc_session` httpOnly cookie. The API turns it into `{ userId, role, clubId? }` and re-validates it on every request.
 
 **Database tables (SQLite):** `users`, `sessions`, `units`, `clubs` (+ `deleted` flag), `events`, `registrations` (unique per event + user), `memberships`, `follows`, `announcements` (+ `deleted` flag). Deleted clubs/announcements are marked, never erased. Nothing is kept in localStorage any more.
@@ -223,7 +225,8 @@ Reset the demo: `npm run db:reset` (wipes the database and re-seeds it; all sign
 
 **Clubs**
 10. Join once; shown count = `memberCount` + site members.
-10a. **A student can be a member of at most 2 clubs** (deleted clubs don't count).
+10a. **A student can hold at most 2 club slots**: approved memberships + pending requests (rejected requests and deleted clubs don't count).
+10b. Membership status: `pending` → `approved` | `rejected`, decided only by that club's Club Manager(s) or faculty head (`canManageMembers`). Staff can remove an approved member. Only approved members count in member numbers and receive club announcements.
 11. Leaving lowers the count by one.
 
 **Permissions**

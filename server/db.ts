@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS registrations (
 CREATE TABLE IF NOT EXISTS memberships (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   club_id TEXT NOT NULL REFERENCES clubs(id),
+  status  TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
   joined_at TEXT NOT NULL,
   PRIMARY KEY (user_id, club_id)
 );
@@ -92,9 +93,19 @@ export function openDb(path = process.env.DB_PATH || DEFAULT_DB_PATH): DB {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
+  migrate(db);
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number };
   if (n === 0) seed(db);
   return db;
+}
+
+// Upgrades databases created by an older version (columns added later)
+function migrate(db: DB): void {
+  const cols = (db.prepare('PRAGMA table_info(memberships)').all() as Array<{ name: string }>).map(c => c.name);
+  if (!cols.includes('status')) {
+    // v3 memberships were joined instantly, so they are approved members
+    db.exec("ALTER TABLE memberships ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'");
+  }
 }
 
 // Wipes all rows and loads the demo data again (demo passwords are hashed on the way in)
@@ -149,7 +160,9 @@ export const toRegistration = (r: Row): Registration => ({
   id: r.id as string, eventId: r.event_id as string, userId: r.user_id as string,
   status: r.status as Registration['status'], createdAt: r.created_at as string,
 });
-export const toMembership = (r: Row): Membership => ({ userId: r.user_id as string, clubId: r.club_id as string, joinedAt: r.joined_at as string });
+export const toMembership = (r: Row): Membership => ({
+  userId: r.user_id as string, clubId: r.club_id as string, status: r.status as Membership['status'], joinedAt: r.joined_at as string,
+});
 export const toFollow = (r: Row): Follow => ({ userId: r.user_id as string, unitId: r.unit_id as string });
 export const toAnnouncement = (r: Row): Announcement => ({
   id: r.id as string, clubId: (r.club_id as string | null) ?? null, title: r.title as string, body: r.body as string,

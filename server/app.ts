@@ -7,11 +7,11 @@ import type { AppEvent, Registration, Session, User } from '../src/data/types';
 import type { RegStatus, Role } from '../src/lib/constants';
 import { BAD_LOGIN, loginDecision, validateSession } from '../src/lib/auth';
 import { initialStatus, localActiveCount, registerBlockReason, reviewBlockReason } from '../src/lib/registrations';
-import { joinBlockReason } from '../src/lib/memberships';
+import { joinBlockReason, membershipOf, reviewMemberBlock } from '../src/lib/memberships';
 import { eventsToCancelOnDelete } from '../src/lib/clubs';
 import {
   allowedHosts, assignableClubs, canAddClub, canDeactivateUser, canDeleteClub, canEditClub, canEditUser,
-  canManageAnnouncement, canManageEvent, canReviewSignup, isFaculty,
+  canManageAnnouncement, canManageEvent, canManageMembers, canReviewSignup, isFaculty,
 } from '../src/lib/permissions';
 import { validateAnnouncement, validateClub, validateEvent, validateSignup, validateUser, type Errors } from '../src/lib/validation';
 import { seatsTakenNow } from '../src/lib/seats';
@@ -57,7 +57,7 @@ function visibleState(snap: Snapshot, actor: Session | null) {
   if (actor?.role === 'faculty') {
     visibleUsers = users;
     visibleRegs = registrations;
-    visibleMemberships = memberships;
+    visibleMemberships = memberships; // faculty oversee accounts; they only MANAGE their own club's members
   } else if (actor?.role === 'clubManager') {
     const clubMembers = memberships.filter(m => m.clubId === actor.clubId);
     visibleRegs = registrations.filter(r => manageable.has(r.eventId));
@@ -72,7 +72,7 @@ function visibleState(snap: Snapshot, actor: Session | null) {
   const seatCounts: Record<string, number> = {};
   for (const e of events) seatCounts[e.id] = localActiveCount(e.id, registrations);
   const memberCounts: Record<string, number> = {};
-  for (const m of memberships) memberCounts[m.clubId] = (memberCounts[m.clubId] ?? 0) + 1;
+  for (const m of memberships) if (m.status === 'approved') memberCounts[m.clubId] = (memberCounts[m.clubId] ?? 0) + 1;
 
   return {
     session: actor,
@@ -202,7 +202,34 @@ export function createApp(db: DB) {
     need(snap.liveClubIds.has(clubId), 404, 'Club not found.');
     const block = joinBlockReason({ role: actor.role, userId: actor.userId, clubId, memberships: snap.memberships, liveClubIds: snap.liveClubIds });
     if (block) fail(block === 'not-student' ? 403 : 409, block);
-    db.prepare('INSERT INTO memberships (user_id,club_id,joined_at) VALUES (?,?,?)').run(actor.userId, clubId, new Date().toISOString());
+    // F9b: joining is a request; the club's manager / faculty head approves it (a rejected request may be re-sent)
+    db.prepare(`INSERT INTO memberships (user_id,club_id,status,joined_at) VALUES (?,?,'pending',?)
+      ON CONFLICT(user_id, club_id) DO UPDATE SET status = 'pending', joined_at = excluded.joined_at`)
+      .run(actor.userId, clubId, new Date().toISOString());
+    return { ok: true, status: 'pending' };
+  }));
+
+  // M8: the club's Club Manager or faculty head approves / rejects a pending request
+  api.patch('/clubs/:id/members/:userId', wrap(req => {
+    const actor = actorOf(req);
+    const snap = req.snap!;
+    const clubId = String(req.params.id);
+    need(snap.liveClubIds.has(clubId), 404, 'Club not found.');
+    need(canManageMembers(actor, clubId), 403, 'Only this club’s manager or faculty head can review its join requests.');
+    const status = str(req.body.status);
+    need(status === 'approved' || status === 'rejected', 400, 'Bad status.');
+    const block = reviewMemberBlock(membershipOf(String(req.params.userId), clubId, snap.memberships));
+    if (block) fail(block === 'not-found' ? 404 : 409, block);
+    db.prepare('UPDATE memberships SET status = ? WHERE user_id = ? AND club_id = ?').run(status, String(req.params.userId), clubId);
+  }));
+
+  // M8: remove a member (or clear a request) from the club
+  api.delete('/clubs/:id/members/:userId', wrap(req => {
+    const actor = actorOf(req);
+    const clubId = String(req.params.id);
+    need(req.snap!.liveClubIds.has(clubId), 404, 'Club not found.');
+    need(canManageMembers(actor, clubId), 403, 'Only this club’s manager or faculty head can remove its members.');
+    db.prepare('DELETE FROM memberships WHERE user_id = ? AND club_id = ?').run(String(req.params.userId), clubId);
   }));
 
   api.delete('/clubs/:id/membership', wrap(req => {
