@@ -19,8 +19,7 @@ import { FacultyClubDetail } from '../pages/faculty/FacultyClubDetail';
 import { ManageUsers } from '../pages/faculty/ManageUsers';
 import { FacultyAnnouncements } from '../pages/faculty/FacultyAnnouncements';
 import { RequireRole } from '../components/RequireRole';
-import { HideFor, ByRole } from '../components/StaffRoute';
-import { StaffEvents } from '../pages/manage/StaffEvents';
+import { HideFor } from '../components/StaffRoute';
 import type { Role } from '../lib/constants';
 import type { ReactNode } from 'react';
 
@@ -37,9 +36,9 @@ export const router = createHashRouter([
     Component: Root,
     children: [
       // Staff don't browse the student discovery pages: Club Managers only have "Manage club" + "Events",
-      // Faculty have no Units page. /events shows staff only the events they host.
+      // Faculty have no Units page. /events uses the same page for everyone; staff only see the events they host.
       { index: true, element: <HideFor roles={STAFF}><Home /></HideFor> },
-      { path: 'events', element: <ByRole staff={<StaffEvents />} others={<Events />} /> },
+      { path: 'events', Component: Events },
       { path: 'events/:id', Component: EventDetails },
       { path: 'clubs', element: <HideFor roles={['clubManager']}><Clubs /></HideFor> },
       { path: 'units', element: <HideFor roles={STAFF}><Units /></HideFor> },
@@ -61,7 +60,7 @@ export const router = createHashRouter([
       { path: 'faculty/clubs/new', element: only(['faculty'], <ClubForm />) },
       { path: 'faculty/clubs/:id', element: only(['faculty'], <FacultyClubDetail />) },
       { path: 'faculty/clubs/:id/edit', element: only(['faculty'], <ClubForm />) },
-      { path: 'faculty/events', element: only(['faculty'], <StaffEvents />) },
+      { path: 'faculty/events', element: only(['faculty'], <Events />) },
       { path: 'faculty/users', element: only(['faculty'], <ManageUsers />) },
       { path: 'faculty/announcements', element: only(['faculty'], <FacultyAnnouncements />) },
 

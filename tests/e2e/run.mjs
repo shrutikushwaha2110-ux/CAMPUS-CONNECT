@@ -82,6 +82,7 @@ const asFaculty = () => mustLogin('faculty', 'admin@atria.edu', 'admin123'); // 
 const asMusicHead = () => mustLogin('faculty', 'meera.nair@atria.edu', 'admin123'); // Prof. Meera Nair, head of Music Club
 const navLinks = () => page.$$eval('nav[aria-label=Main] a', as => as.map(a => a.innerText.trim()).filter(t => t && t !== 'CampusConnect' && t !== 'Log in'));
 const rowIds = () => page.$$eval('[data-event-row]', els => els.map(e => e.dataset.eventRow));
+const cardIds = () => page.$$eval('[data-event-card]', els => els.map(e => e.dataset.eventCard));
 async function shot(name, { fullPage = true, width } = {}) {
   if (width) await page.setViewport({ width, height: 812, deviceScaleFactor: 1 });
   await sleep(300);
@@ -301,7 +302,7 @@ try {
     return 'Music registrations, Music edit URL and /faculty/clubs all blocked';
   });
 
-  await test('M6', 'Club Manager sees only "Manage club" and "Events"', 'Log in as Music Club manager; check navbar, /, /clubs, /units, /events, a Dance event URL', 'Nav = Manage club + Events; other pages redirect to /manage; Events = only Music events + Music announcements', async () => {
+  await test('M6', 'Club Manager sees only "Manage club" and "Events"', 'Log in as Music Club manager; check navbar, /, /clubs, /units, /events, a Dance event URL', 'Nav = Manage club + Events; other pages redirect to /manage; Events = student-style page with only Music events + Music announcements', async () => {
     await asManager('music');
     const nav = await navLinks();
     expect(nav.join('|') === 'Manage club|Events', `nav: ${nav}`);
@@ -315,15 +316,17 @@ try {
     expect(redirects.every(r => r.endsWith('#/manage')), redirects.join(', '));
     await go('#/events');
     const title = await text('main h1');
-    const rows = await rowIds();
+    const scope = await text('[data-testid=staff-events-scope]');
+    const rows = await cardIds();
+    const sameUi = !!(await page.$('input[aria-label]')) && !!(await page.$('select[aria-label="Filter by date"]')) && (await page.$$('main button')).length >= 7;
     const ann = await text('[data-testid=announcements-list]');
-    expect(title === 'Music Club events' && rows.length > 0 && rows.every(r => ['open-mic-evening', 'battle-of-bands'].includes(r)), `${title} ${rows}`);
+    expect(title === 'Events' && scope.includes('Music Club') && sameUi && rows.length > 0 && rows.every(r => ['open-mic-evening', 'battle-of-bands'].includes(r)), `${title} | ${scope} | sameUi=${sameUi} | ${rows}`);
     expect(ann.includes('Weekly jam night') && !ann.includes('Annual Dance Fest auditions') && !ann.includes('Welcome to CampusConnect'), ann);
     await shot('15-music-manager-events');
     await go('#/events/annual-dance-fest');
     const blocked = !!(await page.$('[data-testid=not-allowed]'));
     expect(blocked, 'Dance event page was visible to the Music manager');
-    return `Nav: "${nav.join('" + "')}"; ${redirects.join(', ')}; Events page "${title}" rows=${rows.join(', ')}; announcements = Music only; Dance event URL blocked`;
+    return `Nav: "${nav.join('" + "')}"; ${redirects.join(', ')}; Events page = student UI (search, category chips, date filter, cards) titled "${title}", scoped "${scope.split('.')[0]}"; cards=${rows.join(', ')}; announcements = Music only; Dance event URL blocked`;
   });
 
   await test('O2', 'Invalid event form creates nothing', 'Dance manager: seats 0 + past date', 'Errors shown, event not created', async () => {
@@ -401,7 +404,7 @@ try {
     const nav = await navLinks();
     expect(!nav.includes('Units'), `nav still has Units: ${nav}`);
     await go('#/events');
-    const rows = await rowIds();
+    const rows = await cardIds();
     const other = ['open-mic-evening', 'battle-of-bands', 'football-cup', 'twenty-four-hour-hackathon', 'robotics-expo', 'literature-circle', 'esports-night'];
     expect(rows.length > 0 && !rows.some(r => other.includes(r)) && rows.includes('maker-tools-workshop'), `rows: ${rows}`);
     await shot('16-faculty-events');

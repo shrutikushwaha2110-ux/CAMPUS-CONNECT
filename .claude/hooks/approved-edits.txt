@@ -7,3 +7,4 @@
 #             for the role-based login + staff pages change. Re-locked the same day after the change was made.
 # 2026-09-24  Shruti requested "a faculty member manages only the one club they head" + scoped staff sections.
 #             Unlocked SPEC.md and src/data/users.json for that change. Re-locked the same day after the change.
+# 2026-09-24  Shruti: staff Events page must use the student Events UI. Unlocked SPEC.md for that line; re-locked after.

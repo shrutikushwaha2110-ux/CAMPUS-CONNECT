@@ -20,6 +20,7 @@ export function EventCard({ event, localTaken = 0, hostName, myStatus }: Props) 
   return (
     <Link
       to={`/events/${event.id}`}
+      data-event-card={event.id}
       className="flex flex-col rounded-2xl overflow-hidden bg-white transition-all hover:-translate-y-0.5 no-underline"
       style={{
         border: '1px solid #E2E8F0',

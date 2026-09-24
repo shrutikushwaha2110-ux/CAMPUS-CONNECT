@@ -11,9 +11,3 @@ export function HideFor({ roles, children }: { roles: Role[]; children: ReactNod
   if (session && roles.includes(session.role)) return <Navigate to={ROLE_HOME[session.role]} replace />;
   return <>{children}</>;
 }
-
-// Renders `staff` for Club Managers / Faculty and `others` for students and visitors
-export function ByRole({ staff, others }: { staff: ReactNode; others: ReactNode }) {
-  const { session } = useSession();
-  return <>{session && session.role !== 'student' ? staff : others}</>;
-}

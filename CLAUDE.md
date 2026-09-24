@@ -39,10 +39,10 @@ src/
                          seats · registrations · memberships · permissions · validation · auth · clubs · eventFilter · merge · storage · date · constants
   components/          Navbar (role-aware), Footer, EventCard, SeatsBadge, … (Figma-derived)
                        ui.tsx (Button, Card, Field, ConfirmDialog, Toast…), staff.tsx (EventsTable, SeatsBar, AnnouncementsList),
-                       RequireRole.tsx (route guard + "Not available for your role"), StaffRoute.tsx (HideFor / ByRole), StudentRules.tsx
+                       RequireRole.tsx (route guard + "Not available for your role"), StaffRoute.tsx (HideFor), StudentRules.tsx
   components/3d/       HeroScene.tsx (Three.js only, no business rules)
   pages/               public + student: Home, Events, EventDetails, Clubs, Units, Dashboard (student), Login (+ RoleLogin), NotFound, Root
-  pages/manage/        Club Manager (+ Faculty via shared routes): ManageHome, ClubAdminView, StaffEvents (staff /events), EventForm, EventRegistrations, AnnouncementForm
+  pages/manage/        Club Manager (+ Faculty via shared routes): ManageHome, ClubAdminView, EventForm, EventRegistrations, AnnouncementForm
   pages/faculty/       Faculty: FacultyHome (admin dashboard), ManageClubs ("My club"), ClubForm, FacultyClubDetail, ManageUsers, FacultyAnnouncements
   data/                events, clubs, units, users, announcements (.json) + types.ts
 tests/e2e/run.mjs      browser test suite
@@ -66,12 +66,12 @@ docs/                  E2E_RESULTS.md, features/, HOOKS.md, SUBAGENTS.md, DELIVE
 | Login page | `/login/student` | `/login/club-manager` | `/login/faculty` |
 | Home | `/dashboard` | `/manage` | `/faculty` |
 | Navbar | Events · Clubs · Units · My dashboard | **Manage club · Events** (nothing else) | Admin · My club · Events · Clubs · Users (no Units) |
-| `/events` | all events (student list) | **own club's hosted events + announcements** (`StaffEvents`) | own club's events + **unit** events + own/university announcements (`StaffEvents`) |
+| `/events` | all events | **same `Events` page/UI**, only own club's hosted events + announcements below | same UI, own club's + **unit** events + own/university announcements |
 | Scope | own registrations, clubs (max 2), follows | **only `session.clubId`** | **own `session.clubId`** + unit events; may add clubs; users = students + own club's managers; other faculty are **protected** |
 
-**Why staff get `StaffEvents`, not the student list:** staff can't register, and they may only act on their own club's events (+ unit events for faculty). A page listing exactly those, with Edit / Cancel / Registrations on every row, matches their permissions. One component serves both staff roles. Don't "fix" this back to the student list.
+**Staff Events = the student Events UI with staff scope** (decided with Shruti): `pages/Events.tsx` is ONE component for every role. For staff it filters to `canManageEvent` and adds their announcements below. Keep the UI identical. Management actions stay in Manage club and on the event page.
 
-- `HideFor` / `ByRole` (`components/StaffRoute.tsx`) do the role-specific routing: Club Managers are redirected from `/`, `/clubs`, `/units` to `/manage`; Faculty from `/` and `/units` to `/faculty`.
+- `HideFor` (`components/StaffRoute.tsx`) does the role-specific routing: Club Managers are redirected from `/`, `/clubs`, `/units` to `/manage`; Faculty from `/` and `/units` to `/faculty`.
 - Staff opening another club's event page (`/events/:id`) get "Not available". Students and visitors see every event.
 
 - The session is `{ userId, role, clubId? }` in `campusconnect.session`, and it's **re-validated on every load** (`validateSession`): a deactivated user, a changed role or a deleted club ends it.

@@ -48,7 +48,7 @@ Using one browser for every role is on purpose: in the viva you can register as 
 | Page | Route | Contents |
 |---|---|---|
 | Home | `/` | 3D hero + search, featured event, upcoming events, popular clubs, units strip |
-| Events | `/events` | Students & visitors: all upcoming events (soonest first), search, filters, seats, your status. **Staff: "<Club> events"**: only the events they host (+ unit events for faculty), past & cancelled, and their announcements |
+| Events | `/events` | **One page, same UI for every role** (title, search, category chips, date filter, event cards). Students & visitors: all upcoming events + your status. **Staff: only the events they host** (+ unit events for faculty), with their announcements below. No host filter when only one host |
 | Event Details | `/events/:id` | Poster, date/time, venue, host link, description, seats, "open to all students" note, role-aware registration card |
 | Clubs | `/clubs` | Club cards, category filter, member count, supervising unit, upcoming club events, Join/Joined/Limit reached, **the two student rules** |
 | Units | `/units` | Unit cards, faculty head, supervised clubs, Follow |
@@ -69,7 +69,7 @@ Using one browser for every role is on purpose: in the viva you can register as 
 | Page | Route | Contents |
 |---|---|---|
 | Manage club | `/manage` | Club info, stats (members, upcoming events, registrations, pending), upcoming events with seats filled + Registrations / Edit / Cancel, + New event, + Announcement, members list |
-| Events | `/events` | Current hosted events, past & cancelled, club announcements (edit / delete) |
+| Events | `/events` | The student Events UI showing only the club's upcoming hosted events (cards open the event page with "Manage registrations"), then the club's announcements (edit / delete). Edit / cancel / past events are in Manage club |
 | New / edit event | `/manage/events/new`, `/manage/events/:id/edit` | Form: title, category, host (locked to own club), date, time, venue, seats, description, "needs approval" |
 | Registrations | `/manage/events/:id/registrations` | Seats filled, confirmed/pending/rejected counts, students with Accept / Reject, earlier sample attendees |
 | New / edit announcement | `/manage/announcements/new`, `/manage/announcements/:id/edit` | Title + message; audience locked to own club |
@@ -81,12 +81,12 @@ Using one browser for every role is on purpose: in the viva you can register as 
 | My club | `/faculty/clubs` | The club they head: View members & events / Edit / Delete · + Add club |
 | Club view | `/faculty/clubs/:id` | Own club only: the same view its manager sees, + Edit club info |
 | Add / edit club | `/faculty/clubs/new`, `/faculty/clubs/:id/edit` | Name, category, supervising unit, description, student manager name |
-| Events | `/events` (also `/faculty/events`) | Same staff Events page: own club's hosted events + university (unit) events + their announcements |
+| Events | `/events` (also `/faculty/events`) | The student Events UI with own club's events + university (unit) events (host filter: own club + units), then own/university announcements |
 | Users | `/faculty/users` | All accounts listed; Edit / Deactivate only for students and own club's managers; other faculty shown as "Protected"; Add user |
 | Announcements | `/faculty/announcements` | All announcements (read); New (university-wide or own club); Edit / Delete only their own club's and university-wide ones |
 | (shared) | `/manage/events/*`, `/manage/announcements/*` | Faculty use the same forms/registrations pages, limited to their own club + unit events |
 
-**Why staff get a scoped Events page instead of the student list:** staff can't register (the student page's main action), and they may only act on their own club's events (+ unit events for faculty). Showing exactly those, with Edit / Cancel / Registrations on every row and their announcements beside them, matches their permissions. Other clubs' events would be read-only noise. Club Managers and Faculty share one component, so the two staff roles behave the same.
+**Staff Events = student UI, staff scope:** the page looks exactly like the students' Events page (one component, one design). The *content* is scoped: staff can't register, and may only act on their own club's events (+ unit events for faculty), so they see only those. Actions (edit, cancel, registrations) are one click away via the event page or Manage club.
 
 A logged-out visitor opening a role page is sent to that role's login (and returned afterwards). A logged-in user on another role's page sees **"Not available for your role"** with "Go to my dashboard" and "Switch role"; they never see the form or data.
 

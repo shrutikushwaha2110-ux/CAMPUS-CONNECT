@@ -47,3 +47,12 @@ From there the manager can:
 | 36 | e2e M6 | **Music manager** logs in (your example) | nav/footer = Manage club + Events; redirects; Events = Music only | exactly that; Dance event URL "Not available" | ✅ |
 
 Screenshots: `14-music-manager-manage-club.png`, `15-music-manager-events.png`.
+
+## v2.2 (2026-09-24): Events section uses the student UI
+The manager's **Events** section is now the same `Events` page students use: title, search bar, category chips, date filter and event cards. It shows only the club's hosted events (no host filter, since there's one host), with the club's announcements below. A card opens the event page, which shows "Manage registrations". Editing, cancelling and past events are in **Manage club**.
+
+| # | Type | Input | Expected | Actual | Pass/Fail |
+|---|---|---|---|---|---|
+| 37 | e2e M6 | Music manager opens Events | student UI, Music events only, Music announcements | title "Events", search + chips + date filter present, cards = Open Mic Evening, Battle of Bands; announcement "Weekly jam night" | ✅ |
+
+Screenshot: `15-music-manager-events.png`.
